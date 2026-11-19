@@ -1,0 +1,478 @@
+/* Lógica pura de Mis Finanzas. Los importes se guardan en céntimos (enteros). */
+
+export type TxType = "g" | "i"
+export type Group = "nec" | "des"
+
+export interface Category {
+  id: string
+  n: string
+  t: TxType
+  g?: Group
+}
+export interface Tx {
+  id: string
+  k: number
+  d: string // AAAA-MM-DD
+  t: TxType
+  c: number
+  cat: string
+  n: string
+  rec?: string
+}
+export interface Recurring {
+  id: string
+  n: string
+  t: TxType
+  c: number
+  cat: string
+  dia: number
+  on: boolean
+}
+export interface Goal {
+  id: string
+  n: string
+  obj: number
+  ah: number
+  fecha?: string // AAAA-MM
+}
+export interface Settings {
+  cats: Category[]
+  budgets: Record<string, number>
+  saldoInicial: number
+  recs: Recurring[]
+  started: boolean
+}
+export interface FinanceData {
+  settings: Settings
+  goals: Goal[]
+  months: Record<string, Tx[]>
+  hasSettings: boolean
+}
+
+/* ---------- utilidades ---------- */
+export const pad = (n: number) => String(n).padStart(2, "0")
+export const uid = () =>
+  Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-5)
+export const norm = (s: unknown) =>
+  String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+export const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o))
+
+const NF = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" })
+const NF0 = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+})
+const PF = new Intl.NumberFormat("es-ES", { style: "percent", maximumFractionDigits: 0 })
+export const MINUS = "−"
+export const eur = (c: number) => NF.format(Math.abs(c || 0) / 100)
+export const eurM = (c: number) => (c < 0 ? MINUS : "") + eur(c)
+export const eurS = (c: number) => (c > 0 ? "+" : c < 0 ? MINUS : "") + eur(c)
+export const eur0 = (c: number) => NF0.format(Math.round((c || 0) / 100))
+export const pct = (x: number | null | undefined) =>
+  x == null || !isFinite(x) ? "—" : PF.format(x)
+export const fmtPlain = (c: number) =>
+  (c / 100).toLocaleString("es-ES", {
+    useGrouping: false,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+
+export function parseMoney(input: unknown): number | null {
+  if (input == null) return null
+  let s = String(input).trim().replace(/[\s€]/g, "").replace(/^\+/, "")
+  let neg = false
+  if (/^[-−]/.test(s)) {
+    neg = true
+    s = s.slice(1)
+  }
+  if (!s) return null
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".")
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "")
+  if (!/^\d+(\.\d+)?$/.test(s)) return null
+  const v = Math.round(parseFloat(s) * 100)
+  return neg ? -v : v
+}
+export const parsePos = (s: unknown) => {
+  const v = parseMoney(s)
+  return v != null && v > 0 ? v : null
+}
+
+/* ---------- fechas ---------- */
+export function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+export const CUR = () => todayStr().slice(0, 7)
+export const ym = (d: string) => String(d).slice(0, 7)
+export function addMonths(m: string, k: number) {
+  let [y, mo] = m.split("-").map(Number)
+  mo += k
+  y += Math.floor((mo - 1) / 12)
+  mo = ((((mo - 1) % 12) + 12) % 12) + 1
+  return `${y}-${pad(mo)}`
+}
+export function daysIn(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo, 0).getDate()
+}
+export function monthsBetween(a: string, b: string) {
+  const [y1, m1] = a.split("-").map(Number)
+  const [y2, m2] = b.split("-").map(Number)
+  return (y2 - y1) * 12 + (m2 - m1)
+}
+export function monthLabel(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+}
+export function monthShort(m: string) {
+  const [y, mo] = m.split("-").map(Number)
+  return new Date(y, mo - 1, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", "")
+}
+export function dayLabel(d: string) {
+  const [y, m, dd] = d.split("-").map(Number)
+  return new Date(y, m - 1, dd)
+    .toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })
+    .replace(".", "")
+}
+export function fmtDate(d: string) {
+  const [y, m, dd] = d.split("-")
+  return `${dd}/${m}/${y}`
+}
+
+/* ---------- datos por defecto ---------- */
+export const DEFAULT_CATS: Category[] = [
+  { id: "casa", n: "Casa y alquiler", t: "g", g: "nec" },
+  { id: "super", n: "Supermercado", t: "g", g: "nec" },
+  { id: "transporte", n: "Transporte", t: "g", g: "nec" },
+  { id: "facturas", n: "Móvil e internet", t: "g", g: "nec" },
+  { id: "estudios", n: "Estudios", t: "g", g: "nec" },
+  { id: "salud", n: "Salud", t: "g", g: "nec" },
+  { id: "comer", n: "Comer fuera y cafés", t: "g", g: "des" },
+  { id: "ocio", n: "Ocio y salidas", t: "g", g: "des" },
+  { id: "ropa", n: "Ropa", t: "g", g: "des" },
+  { id: "subs", n: "Suscripciones", t: "g", g: "des" },
+  { id: "regalos", n: "Regalos", t: "g", g: "des" },
+  { id: "otros-g", n: "Otros gastos", t: "g", g: "des" },
+  { id: "nomina", n: "Nómina", t: "i" },
+  { id: "extras", n: "Extras y propinas", t: "i" },
+  { id: "ayudas", n: "Becas y ayudas", t: "i" },
+  { id: "otros-i", n: "Otros ingresos", t: "i" },
+]
+export const FIXED_CATS = ["otros-g", "otros-i"]
+
+export const defaultSettings = (): Settings => ({
+  cats: clone(DEFAULT_CATS),
+  budgets: {},
+  saldoInicial: 0,
+  recs: [],
+  started: false,
+})
+export function normalizeSettings(s: unknown): Settings {
+  const d = defaultSettings()
+  if (!s || typeof s !== "object") return d
+  const out = Object.assign(d, s) as Settings
+  if (!Array.isArray(out.cats) || !out.cats.length) out.cats = clone(DEFAULT_CATS)
+  for (const id of FIXED_CATS)
+    if (!out.cats.some((c) => c.id === id))
+      out.cats.push(clone(DEFAULT_CATS.find((c) => c.id === id)!))
+  if (!out.budgets || typeof out.budgets !== "object") out.budgets = {}
+  if (!Array.isArray(out.recs)) out.recs = []
+  out.saldoInicial = Number(out.saldoInicial) || 0
+  return out
+}
+export const byDate = (a: Tx, b: Tx) => b.d.localeCompare(a.d) || (b.k || 0) - (a.k || 0)
+
+export function loadAll(o: Partial<FinanceData> & { settings?: unknown }): FinanceData {
+  const months: Record<string, Tx[]> = {}
+  for (const [m, items] of Object.entries(o.months || {}))
+    if (/^\d{4}-\d{2}$/.test(m) && Array.isArray(items) && items.length)
+      months[m] = clone(items).sort(byDate)
+  return {
+    settings: normalizeSettings(o.settings ? clone(o.settings) : null),
+    goals: Array.isArray(o.goals) ? clone(o.goals) : [],
+    months,
+    hasSettings: !!(o.hasSettings || o.settings),
+  }
+}
+export const emptyData = (): FinanceData => ({
+  settings: defaultSettings(),
+  goals: [],
+  months: {},
+  hasSettings: false,
+})
+
+/* ---------- cálculos ---------- */
+export const catMap = (cats: Category[]) => {
+  const o: Record<string, Category> = {}
+  for (const c of cats) o[c.id] = c
+  return o
+}
+export function monthStats(txs: Tx[]) {
+  let inc = 0,
+    exp = 0
+  for (const t of txs) {
+    if (t.t === "i") inc += t.c
+    else exp += t.c
+  }
+  return { inc, exp, bal: inc - exp, rate: inc > 0 ? (inc - exp) / inc : null }
+}
+export function balanceUpTo(months: Record<string, Tx[]>, saldoInicial: number, m: string) {
+  let b = saldoInicial || 0
+  for (const k of Object.keys(months))
+    if (k <= m) for (const t of months[k]) b += t.t === "i" ? t.c : -t.c
+  return b
+}
+export function byCategory(txs: Tx[], type: TxType) {
+  const acc: Record<string, number> = {}
+  for (const t of txs) if (t.t === type) acc[t.cat] = (acc[t.cat] || 0) + t.c
+  return Object.entries(acc)
+    .map(([cat, c]) => ({ cat, c }))
+    .sort((a, b) => b.c - a.c)
+}
+export function rule503020(txs: Tx[], cats: Category[]) {
+  const cm = catMap(cats)
+  let nec = 0,
+    des = 0
+  const st = monthStats(txs)
+  for (const t of txs)
+    if (t.t === "g") {
+      if (cm[t.cat]?.g === "nec") nec += t.c
+      else des += t.c
+    }
+  return { inc: st.inc, nec, des, aho: st.inc - st.exp }
+}
+export const pendingRecs = (recs: Recurring[], txs: Tx[]) =>
+  (recs || []).filter((r) => r.on !== false && !txs.some((t) => t.rec === r.id))
+
+export type BudgetState = "ok" | "warn" | "bad" | "none"
+export function budgetState(spent: number, limit: number): BudgetState {
+  if (!limit) return "none"
+  const p = spent / limit
+  return p > 1 ? "bad" : p >= 0.8 ? "warn" : "ok"
+}
+export function budgetRows(txs: Tx[], settings: Settings) {
+  const spent: Record<string, number> = {}
+  for (const t of txs) if (t.t === "g") spent[t.cat] = (spent[t.cat] || 0) + t.c
+  return settings.cats
+    .filter((c) => c.t === "g")
+    .map((c) => {
+      const lim = settings.budgets[c.id] || 0,
+        s = spent[c.id] || 0
+      return { cat: c, spent: s, limit: lim, pct: lim ? s / lim : null, state: budgetState(s, lim) }
+    })
+    .sort(
+      (a, b) =>
+        (b.limit ? 1 : 0) - (a.limit ? 1 : 0) || (b.pct || 0) - (a.pct || 0) || b.spent - a.spent
+    )
+}
+export function projection(txs: Tx[], pend: Recurring[], m: string, day: number) {
+  const dim = daysIn(m)
+  let fixed = 0,
+    variable = 0
+  for (const t of txs)
+    if (t.t === "g") {
+      if (t.rec) fixed += t.c
+      else variable += t.c
+    }
+  const pendFixed = pend.filter((r) => r.t === "g").reduce((a, r) => a + r.c, 0)
+  const avg = variable / day
+  return { avg, total: Math.round(fixed + pendFixed + avg * dim) }
+}
+export function niceScale(max: number, n: number) {
+  if (max <= 0) return { top: 100, step: 50 }
+  const raw = max / n,
+    mag = Math.pow(10, Math.floor(Math.log10(raw))),
+    r = raw / mag
+  const k = r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10
+  const step = k * mag
+  return { top: step * Math.ceil(max / step), step }
+}
+
+/* ---------- CSV (punto y coma y coma decimal: se abre bien en Excel en español) ---------- */
+function csvCell(v: unknown) {
+  const s = String(v ?? "")
+  return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+}
+export function toCSV(months: Record<string, Tx[]>, cats: Category[]) {
+  const cm = catMap(cats)
+  const rows: string[][] = [["Fecha", "Tipo", "Categoría", "Importe", "Nota"]]
+  const all = Object.values(months)
+    .flat()
+    .sort((a, b) => a.d.localeCompare(b.d) || (a.k || 0) - (b.k || 0))
+  for (const t of all)
+    rows.push([
+      fmtDate(t.d),
+      t.t === "i" ? "Ingreso" : "Gasto",
+      cm[t.cat]?.n || "",
+      (t.t === "i" ? "" : "-") + (t.c / 100).toFixed(2).replace(".", ","),
+      t.n || "",
+    ])
+  return "﻿" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n")
+}
+export function parseCSV(input: string) {
+  const text = String(input).replace(/^﻿/, "")
+  const first = text.split(/\r?\n/)[0] || ""
+  const sep = [";", "\t", ","]
+    .map((s) => [s, first.split(s).length] as const)
+    .sort((a, b) => b[1] - a[1])[0][0]
+  const rows: string[][] = []
+  let row: string[] = [],
+    f = "",
+    q = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (q) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          f += '"'
+          i++
+        } else q = false
+      } else f += ch
+    } else if (ch === '"') q = true
+    else if (ch === sep) {
+      row.push(f)
+      f = ""
+    } else if (ch === "\n") {
+      row.push(f)
+      rows.push(row)
+      row = []
+      f = ""
+    } else if (ch !== "\r") f += ch
+  }
+  if (f !== "" || row.length) {
+    row.push(f)
+    rows.push(row)
+  }
+  return rows.filter((r) => r.some((c) => c.trim() !== ""))
+}
+function parseDateAny(input: string) {
+  const s = String(input || "").trim()
+  let m
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`
+  if ((m = s.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/))) {
+    const y = m[3].length === 2 ? "20" + m[3] : m[3]
+    return `${y}-${pad(+m[2])}-${pad(+m[1])}`
+  }
+  return null
+}
+export function importCSVRows(rows: string[][], cats: Category[]) {
+  if (rows.length < 2) return { txs: [] as Tx[], newCats: [] as Category[], skipped: rows.length }
+  const h = rows[0].map(norm)
+  const find = (keys: string[]) => h.findIndex((x) => keys.some((k) => x.startsWith(k)))
+  const iF = find(["fecha", "date", "dia"]),
+    iT = find(["tipo", "type"]),
+    iC = find(["categ"]),
+    iA = find(["importe", "cantidad", "amount", "monto", "valor"]),
+    iN = find(["nota", "concepto", "descrip", "note", "detalle"])
+  if (iF < 0 || iA < 0) return { error: "El archivo necesita al menos las columnas Fecha e Importe." }
+  const all = cats.slice(),
+    newCats: Category[] = [],
+    txs: Tx[] = []
+  let skipped = 0
+  rows.slice(1).forEach((r, idx) => {
+    const d = parseDateAny(r[iF])
+    const raw = parseMoney(r[iA])
+    if (!d || raw == null || raw === 0) {
+      skipped++
+      return
+    }
+    const tipo = iT >= 0 ? norm(r[iT]) : ""
+    const t: TxType =
+      tipo.startsWith("ingres") || tipo === "i"
+        ? "i"
+        : tipo.startsWith("gast") || tipo === "g"
+          ? "g"
+          : raw < 0
+            ? "g"
+            : "i"
+    const cname = iC >= 0 ? String(r[iC] || "").trim() : ""
+    let cat = t === "g" ? "otros-g" : "otros-i"
+    if (cname) {
+      let c = all.find((x) => x.t === t && norm(x.n) === norm(cname))
+      if (!c) {
+        c = { id: "c" + uid(), n: cname.slice(0, 40), t, ...(t === "g" ? { g: "des" as Group } : {}) }
+        all.push(c)
+        newCats.push(c)
+      }
+      cat = c.id
+    }
+    txs.push({
+      id: uid() + idx,
+      k: Date.now() + idx,
+      d,
+      t,
+      c: Math.abs(raw),
+      cat,
+      n: iN >= 0 ? String(r[iN] || "").trim().slice(0, 80) : "",
+    })
+  })
+  return { txs, newCats, skipped }
+}
+export const txKey = (t: Tx) => [t.d, t.t, t.c, t.cat, norm(t.n)].join("|")
+
+/* ---------- ejemplo ---------- */
+export function buildDemo(): FinanceData {
+  const cur = CUR(),
+    today = new Date().getDate(),
+    months: Record<string, Tx[]> = {},
+    s = defaultSettings()
+  s.budgets = { super: 16000, comer: 5000, ocio: 6000, ropa: 4000, transporte: 4500 }
+  s.saldoInicial = 85000
+  s.started = true
+  s.recs = [
+    { id: "r-nom", n: "Nómina", t: "i", c: 115000, cat: "nomina", dia: 1, on: true },
+    { id: "r-casa", n: "Aportación en casa", t: "g", c: 25000, cat: "casa", dia: 2, on: true },
+    { id: "r-ciclo", n: "Cuota del ciclo", t: "g", c: 16000, cat: "estudios", dia: 5, on: true },
+    { id: "r-movil", n: "Tarifa móvil", t: "g", c: 1500, cat: "facturas", dia: 8, on: true },
+    { id: "r-spot", n: "Música en streaming", t: "g", c: 1199, cat: "subs", dia: 20, on: true },
+  ]
+  const variable: [TxType, string, number[], string | string[], number[]][] = [
+    ["g", "super", [2345, 1870, 3120, 2610, 1985], ["Mercadona", "Lidl", "Bonpreu", "Mercadona", "Lidl"], [4, 9, 15, 21, 27]],
+    ["g", "comer", [450, 1290, 380, 1650], ["Café", "Menú del día", "Café", "Pizza con amigos"], [6, 13, 19, 26]],
+    ["g", "transporte", [4000], "Abono de tren", [3]],
+    ["g", "ocio", [2200, 1800], ["Cine", "Concierto"], [10, 24]],
+    ["g", "ropa", [3499], "Zapatillas", [17]],
+    ["i", "extras", [4800], "Propinas", [28]],
+  ]
+  const fac = [1, 0.92, 1.12, 0.97, 1.06, 0.9]
+  for (let k = 5; k >= 0; k--) {
+    const m = addMonths(cur, -k),
+      last = k === 0 ? today : daysIn(m),
+      items: Tx[] = []
+    let seq = 0
+    for (const r of s.recs)
+      if (r.dia <= last)
+        items.push({ id: `d${k}${r.id}`, k: ++seq, d: `${m}-${pad(r.dia)}`, t: r.t, c: r.c, cat: r.cat, n: r.n, rec: r.id })
+    variable.forEach(([t, cat, amts, n, days], vi) => {
+      if (cat === "ropa" && k % 2) return
+      amts.forEach((a, j) => {
+        const d = Math.min(days[j], daysIn(m))
+        if (d <= last)
+          items.push({
+            id: `d${k}v${vi}${j}`,
+            k: ++seq,
+            d: `${m}-${pad(d)}`,
+            t,
+            c: Math.round(a * (t === "g" ? fac[k] : 1)),
+            cat,
+            n: Array.isArray(n) ? n[j] : n,
+          })
+      })
+    })
+    if (k === 2) items.push({ id: "d2reg", k: ++seq, d: `${m}-14`, t: "g", c: 2500, cat: "regalos", n: "Cumpleaños" })
+    items.sort(byDate)
+    months[m] = items
+  }
+  const goals: Goal[] = [
+    { id: "g1", n: "Fondo de emergencia", obj: 150000, ah: 46000 },
+    { id: "g2", n: "Portátil para el ciclo", obj: 90000, ah: 32000, fecha: addMonths(cur, 6) },
+  ]
+  return { settings: s, goals, months, hasSettings: true }
+}
