@@ -1,21 +1,23 @@
-# Next.js template
+# Orbe · Control financiero
 
-This is a Next.js template with shadcn/ui.
+App web instalable (PWA) para llevar las finanzas personales desde el móvil.
 
-## Adding components
+- Ingresos, gastos, categorías, presupuestos y gastos fijos mensuales
+- Gastos hormiga: detección automática, proyección anual y equivalencia en horas de trabajo
+- Ahorro y metas
+- Trabajo: jornadas por día, semana y mes, horas extra, vacaciones, festivos y bajas
+- Nóminas: bruto, IRPF, Seguridad Social y neto, con resumen anual
+- Exportar e importar CSV y copias completas en JSON
 
-To add components to your app, run the following command:
+Los datos se guardan solo en el navegador del dispositivo (localStorage).
+
+## Desarrollo
 
 ```bash
-npx shadcn@latest add button
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # compilación de producción
+npm run typecheck
 ```
 
-This will place the ui components in the `components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
-```
+Hecho con Next.js 16, React 19, Tailwind CSS 4 y shadcn/ui.

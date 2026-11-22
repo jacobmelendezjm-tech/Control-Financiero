@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import {
   catMap,
   eur,
+  isHormiga,
   fmtPlain,
   norm,
   parseMoney,
@@ -32,7 +33,7 @@ import {
 import { cn } from "@/lib/utils"
 
 /* ---------- piezas comunes ---------- */
-function TypeSwitch({ value, onChange }: { value: TxType; onChange: (t: TxType) => void }) {
+export function TypeSwitch({ value, onChange }: { value: TxType; onChange: (t: TxType) => void }) {
   return (
     <div role="group" aria-label="Tipo" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
       {(
@@ -58,7 +59,7 @@ function TypeSwitch({ value, onChange }: { value: TxType; onChange: (t: TxType) 
   )
 }
 
-function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor?: string; children: React.ReactNode }) {
+export function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={htmlFor} className="text-muted-foreground">
@@ -69,7 +70,7 @@ function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor?:
   )
 }
 
-function FormError({ msg }: { msg: string }) {
+export function FormError({ msg }: { msg: string }) {
   return (
     <p role="alert" className="min-h-5 text-sm font-medium text-destructive">
       {msg}
@@ -78,7 +79,7 @@ function FormError({ msg }: { msg: string }) {
 }
 
 /** Botón de eliminar que pide un segundo toque para confirmar. */
-function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
+export function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
   const [armed, setArmed] = React.useState(false)
   React.useEffect(() => {
     if (!armed) return
@@ -92,7 +93,7 @@ function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
   )
 }
 
-function Shell({
+export function Shell({
   open,
   onClose,
   title,
@@ -118,7 +119,7 @@ function Shell({
   )
 }
 
-function Actions({ onCancel, del }: { onCancel: () => void; del?: () => void }) {
+export function Actions({ onCancel, del }: { onCancel: () => void; del?: () => void }) {
   return (
     <DialogFooter className="sm:justify-between">
       {del ? <DeleteButton onConfirm={del} /> : <span />}
@@ -146,6 +147,7 @@ export function TxDialog({
   defaultDate,
   lastType,
   lastCat,
+  hormigaMax,
   onClose,
   onSave,
   onDelete,
@@ -156,6 +158,7 @@ export function TxDialog({
   defaultDate: string
   lastType: TxType
   lastCat: Partial<Record<TxType, string>>
+  hormigaMax: number
   onClose: () => void
   onSave: (r: TxSaveResult) => void
   onDelete: (tx: Tx) => void
@@ -166,6 +169,7 @@ export function TxDialog({
   const [date, setDate] = React.useState(tx ? tx.d : defaultDate)
   const [note, setNote] = React.useState(tx ? tx.n || "" : "")
   const [rec, setRec] = React.useState(false)
+  const [h, setH] = React.useState<boolean | undefined>(tx?.h)
   const [err, setErr] = React.useState("")
 
   const list = cats.filter((c) => c.t === type)
@@ -184,6 +188,8 @@ export function TxDialog({
     const n = note.trim().slice(0, 80)
     const nt: Tx = { id: tx ? tx.id : uid(), k: tx ? tx.k || Date.now() : Date.now(), d: date, t: type, c, cat: selected, n }
     if (tx?.rec) nt.rec = tx.rec
+    if (tx?.ps) nt.ps = tx.ps
+    if (type === "g" && typeof h === "boolean") nt.h = h
     let newRec: Recurring | null = null
     if (!tx && rec) {
       newRec = {
@@ -259,6 +265,18 @@ export function TxDialog({
             onChange={(e) => setNote(e.target.value)}
           />
         </Field>
+        {type === "g" ? (
+          <HormigaToggle
+            value={h}
+            auto={isHormiga(
+              { id: "", k: 0, d: date, t: "g", c: parsePos(amt) || 0, cat: selected || "", n: "", rec: rec ? "x" : tx?.rec },
+              catMap(cats),
+              hormigaMax
+            )}
+            max={hormigaMax}
+            onChange={setH}
+          />
+        ) : null}
         {tx ? (
           tx.rec ? (
             <p className="text-xs text-muted-foreground">Este movimiento viene de un fijo mensual.</p>
@@ -273,6 +291,38 @@ export function TxDialog({
         <Actions onCancel={onClose} del={tx ? () => onDelete(tx) : undefined} />
       </form>
     </Shell>
+  )
+}
+
+function HormigaToggle({
+  value,
+  auto,
+  max,
+  onChange,
+}: {
+  value: boolean | undefined
+  auto: boolean
+  max: number
+  onChange: (v: boolean | undefined) => void
+}) {
+  const on = value ?? auto
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl bg-muted/70 px-3 py-2.5">
+      <Checkbox id="tx-h" checked={on} onCheckedChange={(v) => onChange(!!v)} className="mt-0.5" />
+      <Label htmlFor="tx-h" className="grid gap-0.5 font-normal">
+        <span className="font-medium">Gasto hormiga</span>
+        <span className="text-xs text-muted-foreground">
+          {value === undefined
+            ? `Automático: pequeños caprichos de hasta ${eur(max)} que no son necesidad.`
+            : "Lo has marcado a mano."}
+          {value !== undefined ? (
+            <button type="button" className="ml-1 underline underline-offset-2" onClick={() => onChange(undefined)}>
+              Volver a automático
+            </button>
+          ) : null}
+        </span>
+      </Label>
+    </div>
   )
 }
 

@@ -2,21 +2,21 @@
 
 import * as React from "react"
 import {
+  ArrowDownLeftIcon,
+  ArrowUpRightIcon,
+  ChartPieIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  FlagIcon,
-  ListIcon,
-  MoonIcon,
-  PieChartIcon,
+  ClockIcon,
+  EllipsisIcon,
+  FileTextIcon,
+  HouseIcon,
   PlusIcon,
-  ReceiptTextIcon,
-  SlidersHorizontalIcon,
-  SunIcon,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   AportDialog,
   CatDialog,
@@ -27,6 +27,13 @@ import {
   TxDialog,
   type TxSaveResult,
 } from "@/components/finanzas/dialogs"
+import { HomeView } from "@/components/finanzas/home-view"
+import { HormigaView } from "@/components/finanzas/hormiga-view"
+import { OrbeWordmark } from "@/components/finanzas/logo"
+import { MoreView } from "@/components/finanzas/more-view"
+import { Splash } from "@/components/finanzas/splash"
+import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
+import { WorkView } from "@/components/finanzas/work-view"
 import {
   AjustesView,
   Banners,
@@ -37,6 +44,7 @@ import {
   type Filters,
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
+import { usePwa } from "@/hooks/use-pwa"
 import {
   CUR,
   addMonths,
@@ -59,31 +67,65 @@ import {
   type Category,
   type FinanceData,
   type Goal,
+  type Payslip,
   type Recurring,
+  type Shift,
   type Tx,
   type TxType,
+  type WorkCfg,
 } from "@/lib/finance"
+import { dayTotals, fmtMin, monthDays, shiftMinutes, summarize } from "@/lib/work"
 import { cn } from "@/lib/utils"
 
-const VIEWS = ["resumen", "movimientos", "presupuesto", "metas", "ajustes"] as const
+const VIEWS = [
+  "inicio",
+  "resumen",
+  "movimientos",
+  "presupuesto",
+  "metas",
+  "hormiga",
+  "trabajo",
+  "nominas",
+  "mas",
+  "ajustes",
+] as const
 type View = (typeof VIEWS)[number]
-const MONTH_VIEWS: View[] = ["resumen", "movimientos", "presupuesto"]
-const NAV: { v: View; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { v: "resumen", label: "Resumen", Icon: ReceiptTextIcon },
-  { v: "movimientos", label: "Movimientos", Icon: ListIcon },
-  { v: "presupuesto", label: "Presupuesto", Icon: PieChartIcon },
-  { v: "metas", label: "Metas", Icon: FlagIcon },
-  { v: "ajustes", label: "Ajustes", Icon: SlidersHorizontalIcon },
-]
+const MONTH_VIEWS: View[] = ["resumen", "movimientos", "presupuesto", "hormiga", "trabajo"]
+const TITLES: Record<View, string> = {
+  inicio: "Inicio",
+  resumen: "Análisis",
+  movimientos: "Movimientos",
+  presupuesto: "Presupuestos",
+  metas: "Ahorro y metas",
+  hormiga: "Gastos hormiga",
+  trabajo: "Trabajo",
+  nominas: "Trabajo",
+  mas: "Más",
+  ajustes: "Ajustes",
+}
+type Tab = "inicio" | "resumen" | "trabajo" | "mas"
+const tabOf = (v: View): Tab =>
+  v === "inicio" ? "inicio" : v === "resumen" ? "resumen" : v === "trabajo" || v === "nominas" ? "trabajo" : "mas"
+const PARENT: Partial<Record<View, View>> = {
+  movimientos: "mas",
+  presupuesto: "mas",
+  metas: "mas",
+  hormiga: "mas",
+  ajustes: "mas",
+}
 
 type Sheet =
-  | { kind: "tx"; tx: Tx | null }
+  | { kind: "tx"; tx: Tx | null; type?: TxType }
   | { kind: "goal"; goal: Goal | null }
   | { kind: "aport"; goal: Goal; sign: 1 | -1 }
   | { kind: "rec"; rec: Recurring | null }
   | { kind: "cat" }
   | { kind: "confirm"; title: string; body: React.ReactNode; yes: string; danger?: boolean; onYes: () => void }
   | { kind: "text"; title: string; text: string }
+  | { kind: "add" }
+  | { kind: "shift"; shift: Shift | null; date: string }
+  | { kind: "payslip"; payslip: Payslip | null }
+  | { kind: "workcfg" }
   | null
 
 /* ---------- operaciones sobre un borrador ---------- */
@@ -129,19 +171,34 @@ async function downloadFile(filename: string, text: string, onFallback: () => vo
 
 export function FinanzasApp() {
   const store = useFinance()
+  const pwa = usePwa()
   const { real, view: D, showingDemo, loaded, mode, update } = store
-  const [view, setView] = React.useState<View>("resumen")
+  const [view, setView] = React.useState<View>("inicio")
   const [month, setMonth] = React.useState(CUR)
   const [filters, setFilters] = React.useState<Filters>({ q: "", t: "all", cat: "all", all: false })
   const [sheet, setSheet] = React.useState<Sheet>(null)
   const [sheetKey, setSheetKey] = React.useState(0)
   const [last, setLast] = React.useState<{ type: TxType; cat: Partial<Record<TxType, string>> }>({ type: "g", cat: {} })
 
-  /* Navegación con #hash para que el botón atrás funcione. */
+  const open = (s: NonNullable<Sheet>) => {
+    setSheetKey((k) => k + 1)
+    setSheet(s)
+  }
+  const close = () => setSheet(null)
+
+  /* Navegación con #hash para que el botón atrás del móvil funcione. */
   React.useEffect(() => {
     const read = () => {
-      const v = location.hash.slice(1) as View
-      if (VIEWS.includes(v)) setView(v)
+      const h = location.hash.slice(1)
+      if (h === "nuevo-gasto") {
+        history.replaceState(null, "", "#inicio")
+        setView("inicio")
+        setSheetKey((k) => k + 1)
+        setSheet({ kind: "tx", tx: null, type: "g" })
+        return
+      }
+      if (VIEWS.includes(h as View)) setView(h as View)
+      else if (!h) setView("inicio")
     }
     read()
     window.addEventListener("hashchange", read)
@@ -153,15 +210,9 @@ export function FinanzasApp() {
     if (location.hash !== "#" + v) location.hash = v
   }
 
-  const open = (s: NonNullable<Sheet>) => {
-    setSheetKey((k) => k + 1)
-    setSheet(s)
-  }
-  const close = () => setSheet(null)
-
   const guardDemo = () => {
     if (!showingDemo) return false
-    toast("Es un ejemplo. Pulsa «Añadir» para apuntar lo tuyo o «Empezar desde cero».")
+    toast("Es un ejemplo. Añade algo tuyo o pulsa «Empezar desde cero».")
     return true
   }
   const startFresh = () => {
@@ -173,11 +224,11 @@ export function FinanzasApp() {
 
   const defaultDate = () => {
     const cur = CUR()
-    if (month === cur) return todayStr()
+    if (view === "inicio" || month === cur) return todayStr()
     return month < cur ? `${month}-${pad(daysIn(month))}` : `${month}-01`
   }
 
-  /* ---------- acciones ---------- */
+  /* ---------- movimientos ---------- */
   const saveTx = ({ tx, oldMonth, newRec }: TxSaveResult) => {
     update((d) => {
       if (newRec) {
@@ -188,7 +239,7 @@ export function FinanzasApp() {
     })
     setLast((l) => ({ type: tx.t, cat: { ...l.cat, [tx.t]: tx.cat } }))
     close()
-    toast.success(ym(tx.d) === month ? "Guardado" : `Guardado en ${monthLabel(ym(tx.d))}`)
+    toast.success(ym(tx.d) === CUR() || ym(tx.d) === month ? "Guardado" : `Guardado en ${monthLabel(ym(tx.d))}`)
   }
   const deleteTx = (tx: Tx) => {
     update((d) => {
@@ -199,10 +250,10 @@ export function FinanzasApp() {
     close()
     toast("Movimiento eliminado")
   }
-  const registerRecs = (rs: Recurring[]) => {
+  const registerRecs = (rs: Recurring[], m: string) => {
     if (guardDemo()) return
     update((d) => {
-      for (const r of rs) upsertTx(d, recTx(r, month), null)
+      for (const r of rs) upsertTx(d, recTx(r, m), null)
     })
     toast.success(rs.length === 1 ? `${rs[0].n} apuntado` : `${rs.length} fijos apuntados`)
   }
@@ -224,6 +275,8 @@ export function FinanzasApp() {
     })
     toast.success("Saldo inicial guardado")
   }
+
+  /* ---------- metas ---------- */
   const saveGoal = (g: Goal) => {
     update((d) => {
       const i = d.goals.findIndex((x) => x.id === g.id)
@@ -248,6 +301,8 @@ export function FinanzasApp() {
     close()
     toast.success(sign > 0 ? `Has apartado ${eur(c)}` : `Has retirado ${eur(c)}`)
   }
+
+  /* ---------- fijos y categorías ---------- */
   const saveRec = (r: Recurring) => {
     update((d) => {
       d.hasSettings = true
@@ -314,20 +369,29 @@ export function FinanzasApp() {
       },
     })
   }
+
+  /* ---------- copias ---------- */
   const exportCSV = () =>
-    downloadFile(`mis-finanzas-${todayStr()}.csv`, toCSV(real.months, real.settings.cats), () =>
+    downloadFile(`orbe-movimientos-${todayStr()}.csv`, toCSV(real.months, real.settings.cats), () =>
       open({ kind: "text", title: "Movimientos en CSV", text: toCSV(real.months, real.settings.cats) })
     )
   const backupJSON = () =>
     JSON.stringify(
-      { app: "mis-finanzas", v: 1, exportado: new Date().toISOString(), settings: real.settings, goals: real.goals, months: real.months },
+      {
+        app: "mis-finanzas",
+        v: 2,
+        exportado: new Date().toISOString(),
+        settings: real.settings,
+        goals: real.goals,
+        months: real.months,
+        work: real.work,
+        payslips: real.payslips,
+      },
       null,
       1
     )
   const exportJSON = () =>
-    downloadFile(`mis-finanzas-copia-${todayStr()}.json`, backupJSON(), () =>
-      open({ kind: "text", title: "Copia completa", text: backupJSON() })
-    )
+    downloadFile(`orbe-copia-${todayStr()}.json`, backupJSON(), () => open({ kind: "text", title: "Copia completa", text: backupJSON() }))
   const copyCSV = () => {
     const text = toCSV(real.months, real.settings.cats)
     navigator.clipboard.writeText(text).then(
@@ -348,18 +412,18 @@ export function FinanzasApp() {
         } catch {
           return toast.error("No he podido leer ese archivo JSON.")
         }
-        if (!obj || (!obj.settings && !obj.months)) return toast.error("Ese JSON no es una copia de Mis finanzas.")
+        if (!obj || (!obj.settings && !obj.months)) return toast.error("Ese JSON no es una copia de Orbe.")
         const nM = Object.values(obj.months || {}).reduce((a, x) => a + (Array.isArray(x) ? x.length : 0), 0)
         const backup = obj
         open({
           kind: "confirm",
           title: "Restaurar copia completa",
-          body: `La copia tiene ${nM} movimientos y ${(backup.goals || []).length} metas. Sustituirá todos tus datos actuales.`,
+          body: `La copia tiene ${nM} movimientos, ${(backup.goals || []).length} metas, ${(backup.payslips || []).length} nóminas y ${(backup.work?.shifts || []).length} jornadas. Sustituirá todos tus datos actuales.`,
           yes: "Sustituir mis datos",
           danger: true,
           onYes: () => {
-            const loaded = loadAll({ ...backup, hasSettings: true })
-            update((d) => Object.assign(d, loaded))
+            const loadedData = loadAll({ ...backup, hasSettings: true })
+            update((d) => Object.assign(d, loadedData))
             close()
             toast.success("Copia restaurada")
           },
@@ -371,8 +435,7 @@ export function FinanzasApp() {
       const existing = new Set(Object.values(real.months).flat().map(txKey))
       const fresh = res.txs.filter((t) => !existing.has(txKey(t)))
       const dup = res.txs.length - fresh.length
-      if (!fresh.length)
-        return toast(dup ? "Todos esos movimientos ya estaban apuntados." : "No he encontrado movimientos en el archivo.")
+      if (!fresh.length) return toast(dup ? "Todos esos movimientos ya estaban apuntados." : "No he encontrado movimientos en el archivo.")
       const extra = [
         dup ? `${dup} ya estaban apuntados` : "",
         res.skipped ? `${res.skipped} filas no se entendían` : "",
@@ -403,7 +466,7 @@ export function FinanzasApp() {
     open({
       kind: "confirm",
       title: "¿Borrar todos tus datos?",
-      body: "Se eliminarán todos tus movimientos, metas, fijos, presupuestos y categorías. No se puede deshacer. Si quieres conservarlos, descarga antes una copia completa.",
+      body: "Se eliminarán movimientos, metas, fijos, presupuestos, categorías, jornadas y nóminas. No se puede deshacer. Si quieres conservarlos, descarga antes una copia completa.",
       yes: "Sí, borrar todo",
       danger: true,
       onYes: () => {
@@ -413,215 +476,419 @@ export function FinanzasApp() {
       },
     })
 
+  /* ---------- trabajo ---------- */
+  const clockToday = () => {
+    const cfg = real.work.cfg
+    const s: Shift = { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa }
+    update((d) => {
+      d.work.shifts.push(s)
+    })
+    toast.success(`Jornada de hoy registrada · ${fmtMin(shiftMinutes(s))}`, {
+      action: { label: "Editar", onClick: () => open({ kind: "shift", shift: s, date: s.d }) },
+    })
+  }
+  const openDay = (date: string, s: Shift | null) => {
+    if (s && guardDemo()) return
+    const found = s ? real.work.shifts.find((x) => x.id === s.id) || null : null
+    open({ kind: "shift", shift: found, date })
+  }
+  const saveShift = (s: Shift) => {
+    update((d) => {
+      const i = d.work.shifts.findIndex((x) => x.id === s.id)
+      if (i >= 0) d.work.shifts[i] = s
+      else d.work.shifts.push(s)
+    })
+    close()
+    toast.success("Jornada guardada")
+  }
+  const deleteShift = (s: Shift) => {
+    update((d) => {
+      d.work.shifts = d.work.shifts.filter((x) => x.id !== s.id)
+    })
+    close()
+    toast("Jornada eliminada")
+  }
+  const saveWorkCfg = (c: WorkCfg) => {
+    update((d) => {
+      d.work.cfg = c
+      d.hasSettings = true
+    })
+    close()
+    toast.success("Jornada actualizada")
+  }
+  const savePayslip = ({ p, asIncome }: PayslipSaveResult) => {
+    update((d) => {
+      const oldTx = p.txId ? Object.values(d.months).flat().find((t) => t.id === p.txId) : undefined
+      if (asIncome) {
+        const cat = d.settings.cats.some((c) => c.id === "nomina") ? "nomina" : "otros-i"
+        const tx: Tx = {
+          id: oldTx?.id || uid(),
+          k: oldTx?.k || Date.now(),
+          d: p.dPago,
+          t: "i",
+          c: p.neto,
+          cat,
+          n: `Nómina de ${monthLabel(p.m)}`,
+          ps: p.id,
+        }
+        upsertTx(d, tx, oldTx ? ym(oldTx.d) : null)
+        p.txId = tx.id
+      } else {
+        if (oldTx) {
+          const m = ym(oldTx.d)
+          d.months[m] = d.months[m].filter((t) => t.id !== oldTx.id)
+          if (!d.months[m].length) delete d.months[m]
+        }
+        delete p.txId
+      }
+      const i = d.payslips.findIndex((x) => x.id === p.id)
+      if (i >= 0) d.payslips[i] = p
+      else d.payslips.push(p)
+    })
+    close()
+    toast.success(asIncome ? "Nómina guardada y apuntada como ingreso" : "Nómina guardada")
+  }
+  const deletePayslip = (p: Payslip) => {
+    update((d) => {
+      d.payslips = d.payslips.filter((x) => x.id !== p.id)
+      if (p.txId)
+        for (const m of Object.keys(d.months)) {
+          d.months[m] = d.months[m].filter((t) => t.id !== p.txId)
+          if (!d.months[m].length) delete d.months[m]
+        }
+    })
+    close()
+    toast("Nómina eliminada")
+  }
+  const openPayslip = (p: Payslip | null) => {
+    if (p && guardDemo()) return
+    open({ kind: "payslip", payslip: p ? real.payslips.find((x) => x.id === p.id) || null : null })
+  }
+  const setHormigaMax = (raw: string) => {
+    const v = parsePos(raw)
+    if (v == null) return toast.error("Escribe un importe válido, por ejemplo 10.")
+    update((d) => {
+      d.hasSettings = true
+      d.settings.hormigaMax = v
+    })
+    toast.success(`Gastos hormiga: hasta ${eur(v)}`)
+  }
+  const setNombre = (n: string) => {
+    update((d) => {
+      d.hasSettings = true
+      d.settings.nombre = n.trim().slice(0, 30)
+    })
+    toast.success("Guardado")
+  }
+
   const findTx = (t: Tx) => (real.months[ym(t.d)] || []).find((x) => x.id === t.id)
   const openTx = (t: Tx) => {
     if (guardDemo()) return
     const found = findTx(t)
     if (found) open({ kind: "tx", tx: found })
   }
-  const newTx = () => loaded && open({ kind: "tx", tx: null })
+  const newTx = (type?: TxType) => loaded && open({ kind: "tx", tx: null, type })
   const memory = mode === "memory"
   const showMonth = MONTH_VIEWS.includes(view)
+  const tab = tabOf(view)
+  const parent = PARENT[view]
+
+  // Extras apuntados en el mes de la nómina que se va a crear (sugerencia).
+  const payslipMonth = sheet?.kind === "payslip" ? sheet.payslip?.m || addMonths(CUR(), -1) : addMonths(CUR(), -1)
+  const extrasSuggestion = React.useMemo(() => {
+    const s = summarize(monthDays(dayTotals(real.work.shifts, real.work.cfg), payslipMonth), real.work.cfg)
+    return { min: s.extra, c: s.extraPay }
+  }, [real.work, payslipMonth])
 
   return (
-    <div className="mx-auto max-w-[1080px] px-4 pb-40">
-      <Header mode={mode} />
-      {showMonth ? <MonthBar month={month} setMonth={setMonth} /> : null}
-
-      <main id="view" tabIndex={-1} className="outline-none">
-        {!loaded ? (
-          <div className="grid min-h-[50vh] place-items-center font-mono text-sm tracking-wider text-muted-foreground">
-            Cargando tus cuentas…
-          </div>
-        ) : (
-          <>
-            <Banners demo={showingDemo} memory={memory} onStart={startFresh} />
-            {view === "resumen" ? (
-              <ResumenView
-                data={D}
-                month={month}
-                demo={showingDemo}
-                onMonth={setMonth}
-                onOpenTx={openTx}
-                onNewTx={newTx}
-                onRegisterRec={(r) => registerRecs([r])}
-                onRegisterAll={registerRecs}
-                onSeeAll={() => go("movimientos")}
-              />
-            ) : view === "movimientos" ? (
-              <MovView data={D} month={month} filters={filters} setFilters={setFilters} onOpenTx={openTx} onNewTx={newTx} />
-            ) : view === "presupuesto" ? (
-              <PresView data={D} month={month} demo={showingDemo} onBudget={setBudget} />
-            ) : view === "metas" ? (
-              <MetasView
-                goals={D.goals}
-                onNew={() => open({ kind: "goal", goal: null })}
-                onEdit={(g) => !guardDemo() && open({ kind: "goal", goal: g })}
-                onAport={(g, sign) => !guardDemo() && open({ kind: "aport", goal: g, sign })}
-              />
+    <>
+      <Splash />
+      <div className="mx-auto max-w-[1080px] px-4 pb-36">
+        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl">
+          <div className="flex h-11 items-center justify-between gap-3">
+            {view === "inicio" ? (
+              <OrbeWordmark />
             ) : (
-              <AjustesView
-                data={real}
-                memory={memory}
-                onSaldo={setSaldo}
-                onNewRec={() => open({ kind: "rec", rec: null })}
-                onEditRec={(r) => open({ kind: "rec", rec: r })}
-                onToggleRec={toggleRec}
-                onNewCat={() => open({ kind: "cat" })}
-                onRenameCat={renameCat}
-                onGroupCat={groupCat}
-                onDeleteCat={deleteCat}
-                onExportCSV={exportCSV}
-                onExportJSON={exportJSON}
-                onCopyCSV={copyCSV}
-                onImport={importFile}
-                onWipe={wipe}
-              />
+              <div className="flex min-w-0 items-center gap-1">
+                {parent ? (
+                  <Button variant="ghost" size="icon" className="-ml-2 rounded-full" aria-label="Volver" onClick={() => go(parent)}>
+                    <ChevronLeftIcon className="size-5" />
+                  </Button>
+                ) : null}
+                <h1 className="truncate font-heading text-xl font-semibold tracking-tight">{TITLES[view]}</h1>
+              </div>
             )}
-          </>
-        )}
-      </main>
+            <StatusPill mode={mode} demo={showingDemo} />
+          </div>
+        </header>
 
-      {showMonth && loaded ? (
-        <Button
-          onClick={newTx}
-          className="fixed right-4 bottom-21 z-30 h-14 gap-2 rounded-2xl pr-5 pl-4 text-base shadow-lg md:right-6 md:bottom-6"
-        >
-          <PlusIcon className="size-5" strokeWidth={2.4} />
-          Añadir
-        </Button>
-      ) : null}
+        {showMonth ? <MonthBar month={month} setMonth={setMonth} /> : null}
 
-      <nav
-        aria-label="Secciones"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t bg-card px-1 pt-1.5 pb-2.5 md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[560px] md:-translate-x-1/2 md:rounded-2xl md:border md:p-1.5 md:shadow-lg"
-      >
-        {NAV.map(({ v, label, Icon }) => (
-          <button
-            key={v}
-            type="button"
-            aria-current={view === v ? "page" : undefined}
-            onClick={() => go(v)}
-            className={cn(
-              "grid justify-items-center gap-1 rounded-lg px-0.5 py-1.5 text-[11px] font-semibold text-muted-foreground md:text-xs",
-              view === v && "text-primary"
-            )}
-          >
-            <Icon className="size-5" />
-            {label}
-          </button>
-        ))}
-      </nav>
+        <main id="view" tabIndex={-1} className="outline-none" key={view}>
+          {!loaded ? (
+            <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Cargando tus cuentas…</div>
+          ) : (
+            <>
+              <Banners demo={showingDemo} memory={memory} onStart={startFresh} />
+              {view === "inicio" ? (
+                <HomeView
+                  data={D}
+                  demo={showingDemo}
+                  onNewTx={newTx}
+                  onOpenTx={openTx}
+                  onGo={(v) => go(v)}
+                  onClock={clockToday}
+                  onRegisterRec={(r) => registerRecs([r], CUR())}
+                  onRegisterAll={(rs) => registerRecs(rs, CUR())}
+                />
+              ) : view === "resumen" ? (
+                <ResumenView
+                  data={D}
+                  month={month}
+                  demo={showingDemo}
+                  onMonth={setMonth}
+                  onOpenTx={openTx}
+                  onNewTx={() => newTx()}
+                  onRegisterRec={(r) => registerRecs([r], month)}
+                  onRegisterAll={(rs) => registerRecs(rs, month)}
+                  onSeeAll={() => go("movimientos")}
+                />
+              ) : view === "movimientos" ? (
+                <MovView data={D} month={month} filters={filters} setFilters={setFilters} onOpenTx={openTx} onNewTx={() => newTx()} />
+              ) : view === "presupuesto" ? (
+                <PresView data={D} month={month} demo={showingDemo} onBudget={setBudget} />
+              ) : view === "metas" ? (
+                <MetasView
+                  goals={D.goals}
+                  onNew={() => open({ kind: "goal", goal: null })}
+                  onEdit={(g) => !guardDemo() && open({ kind: "goal", goal: g })}
+                  onAport={(g, sign) => !guardDemo() && open({ kind: "aport", goal: g, sign })}
+                />
+              ) : view === "hormiga" ? (
+                <HormigaView data={D} month={month} onOpenTx={openTx} onMax={setHormigaMax} />
+              ) : view === "trabajo" || view === "nominas" ? (
+                <WorkView
+                  data={D}
+                  month={month}
+                  tab={view === "nominas" ? "nominas" : "jornadas"}
+                  onTab={(t) => go(t === "nominas" ? "nominas" : "trabajo")}
+                  onDay={openDay}
+                  onClock={clockToday}
+                  onCfg={() => open({ kind: "workcfg" })}
+                  onNewPayslip={() => openPayslip(null)}
+                  onEditPayslip={openPayslip}
+                />
+              ) : view === "mas" ? (
+                <MoreView nombre={real.settings.nombre} pwa={pwa} onGo={(v) => go(v)} onNombre={setNombre} />
+              ) : (
+                <AjustesView
+                  data={real}
+                  memory={memory}
+                  onSaldo={setSaldo}
+                  onNewRec={() => open({ kind: "rec", rec: null })}
+                  onEditRec={(r) => open({ kind: "rec", rec: r })}
+                  onToggleRec={toggleRec}
+                  onNewCat={() => open({ kind: "cat" })}
+                  onRenameCat={renameCat}
+                  onGroupCat={groupCat}
+                  onDeleteCat={deleteCat}
+                  onExportCSV={exportCSV}
+                  onExportJSON={exportJSON}
+                  onCopyCSV={copyCSV}
+                  onImport={importFile}
+                  onWipe={wipe}
+                />
+              )}
+            </>
+          )}
+        </main>
 
-      {/* Diálogos: la key fuerza un formulario limpio cada vez que se abre. */}
-      {sheet?.kind === "tx" ? (
-        <TxDialog
-          key={sheetKey}
-          open
-          tx={sheet.tx}
-          cats={real.settings.cats}
-          defaultDate={defaultDate()}
-          lastType={last.type}
-          lastCat={last.cat}
-          onClose={close}
-          onSave={saveTx}
-          onDelete={deleteTx}
-        />
-      ) : null}
-      {sheet?.kind === "goal" ? (
-        <GoalDialog key={sheetKey} open goal={sheet.goal} onClose={close} onSave={saveGoal} onDelete={deleteGoal} />
-      ) : null}
-      {sheet?.kind === "aport" ? (
-        <AportDialog
-          key={sheetKey}
-          open
-          goal={sheet.goal}
-          sign={sheet.sign}
-          onClose={close}
-          onSave={(c) => aport(sheet.goal, sheet.sign, c)}
-        />
-      ) : null}
-      {sheet?.kind === "rec" ? (
-        <RecDialog key={sheetKey} open rec={sheet.rec} cats={real.settings.cats} onClose={close} onSave={saveRec} onDelete={deleteRec} />
-      ) : null}
-      {sheet?.kind === "cat" ? <CatDialog key={sheetKey} open cats={real.settings.cats} onClose={close} onSave={saveCat} /> : null}
-      {sheet?.kind === "confirm" ? (
-        <ConfirmDialog key={sheetKey} open title={sheet.title} yes={sheet.yes} danger={sheet.danger} onClose={close} onYes={sheet.onYes}>
-          {sheet.body}
-        </ConfirmDialog>
-      ) : null}
-      {sheet?.kind === "text" ? <TextDialog key={sheetKey} open title={sheet.title} text={sheet.text} onClose={close} /> : null}
-    </div>
-  )
-}
+        <BottomNav tab={tab} onGo={(v) => go(v)} onAdd={() => loaded && open({ kind: "add" })} />
 
-function Header({ mode }: { mode: string }) {
-  return (
-    <header className="sticky top-0 z-10 -mx-4 mb-2 bg-background/90 px-4 pt-3 pb-2 backdrop-blur-md">
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex items-baseline gap-2 font-heading text-base font-extrabold tracking-tight whitespace-nowrap">
-          Mis finanzas
-          <small className="hidden font-mono text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase min-[440px]:inline">
-            caja personal
-          </small>
-        </span>
-        <div className="flex items-center gap-2">
-          <StatusPill mode={mode} />
-          <ThemeToggle />
-        </div>
+        {/* Diálogos: la key fuerza un formulario limpio cada vez que se abre. */}
+        {sheet?.kind === "add" ? (
+          <AddSheet
+            key={sheetKey}
+            onClose={close}
+            onPick={(k) => {
+              if (k === "g" || k === "i") open({ kind: "tx", tx: null, type: k })
+              else if (k === "shift") open({ kind: "shift", shift: null, date: todayStr() })
+              else open({ kind: "payslip", payslip: null })
+            }}
+          />
+        ) : null}
+        {sheet?.kind === "tx" ? (
+          <TxDialog
+            key={sheetKey}
+            open
+            tx={sheet.tx}
+            cats={real.settings.cats}
+            defaultDate={defaultDate()}
+            lastType={sheet.type ?? last.type}
+            lastCat={last.cat}
+            hormigaMax={real.settings.hormigaMax}
+            onClose={close}
+            onSave={saveTx}
+            onDelete={deleteTx}
+          />
+        ) : null}
+        {sheet?.kind === "shift" ? (
+          <ShiftDialog
+            key={sheetKey}
+            open
+            shift={sheet.shift}
+            date={sheet.date}
+            cfg={real.work.cfg}
+            sameDay={real.work.shifts.filter((s) => s.d === (sheet.shift?.d || sheet.date))}
+            onClose={close}
+            onSave={saveShift}
+            onDelete={deleteShift}
+          />
+        ) : null}
+        {sheet?.kind === "payslip" ? (
+          <PayslipDialog
+            key={sheetKey}
+            open
+            payslip={sheet.payslip}
+            month={CUR()}
+            suggestExtras={extrasSuggestion}
+            onClose={close}
+            onSave={savePayslip}
+            onDelete={deletePayslip}
+          />
+        ) : null}
+        {sheet?.kind === "workcfg" ? <WorkCfgDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveWorkCfg} /> : null}
+        {sheet?.kind === "goal" ? (
+          <GoalDialog key={sheetKey} open goal={sheet.goal} onClose={close} onSave={saveGoal} onDelete={deleteGoal} />
+        ) : null}
+        {sheet?.kind === "aport" ? (
+          <AportDialog key={sheetKey} open goal={sheet.goal} sign={sheet.sign} onClose={close} onSave={(c) => aport(sheet.goal, sheet.sign, c)} />
+        ) : null}
+        {sheet?.kind === "rec" ? (
+          <RecDialog key={sheetKey} open rec={sheet.rec} cats={real.settings.cats} onClose={close} onSave={saveRec} onDelete={deleteRec} />
+        ) : null}
+        {sheet?.kind === "cat" ? <CatDialog key={sheetKey} open cats={real.settings.cats} onClose={close} onSave={saveCat} /> : null}
+        {sheet?.kind === "confirm" ? (
+          <ConfirmDialog key={sheetKey} open title={sheet.title} yes={sheet.yes} danger={sheet.danger} onClose={close} onYes={sheet.onYes}>
+            {sheet.body}
+          </ConfirmDialog>
+        ) : null}
+        {sheet?.kind === "text" ? <TextDialog key={sheetKey} open title={sheet.title} text={sheet.text} onClose={close} /> : null}
       </div>
-    </header>
+    </>
   )
 }
 
-function StatusPill({ mode }: { mode: string }) {
+/* ---------- piezas del armazón ---------- */
+function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; onAdd: () => void }) {
+  const item = (v: Tab, label: string, Icon: React.ComponentType<{ className?: string }>) => (
+    <button
+      type="button"
+      aria-current={tab === v ? "page" : undefined}
+      onClick={() => onGo(v)}
+      className={cn(
+        "grid min-h-12 justify-items-center gap-1 rounded-xl px-1 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors",
+        tab === v && "text-primary"
+      )}
+    >
+      <Icon className="size-[22px]" />
+      {label}
+    </button>
+  )
+  return (
+    <nav
+      aria-label="Secciones"
+      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t bg-card/95 px-2 pt-1.5 backdrop-blur-xl md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[480px] md:-translate-x-1/2 md:rounded-3xl md:border md:p-2 md:shadow-xl"
+    >
+      {item("inicio", "Inicio", HouseIcon)}
+      {item("resumen", "Análisis", ChartPieIcon)}
+      <div className="grid justify-items-center">
+        <button
+          type="button"
+          aria-label="Añadir"
+          onClick={onAdd}
+          className="-mt-7 grid size-15 place-items-center rounded-full bg-hero text-glow shadow-[0_10px_24px_-6px_rgb(13_138_158/0.7)] ring-4 ring-background transition-transform active:scale-95"
+        >
+          <span className="grid size-12 place-items-center rounded-full ring-2 ring-glow/70">
+            <PlusIcon className="size-6" strokeWidth={2.4} />
+          </span>
+        </button>
+      </div>
+      {item("trabajo", "Trabajo", ClockIcon)}
+      {item("mas", "Más", EllipsisIcon)}
+    </nav>
+  )
+}
+
+function AddSheet({ onClose, onPick }: { onClose: () => void; onPick: (k: "g" | "i" | "shift" | "payslip") => void }) {
+  const opts = [
+    { k: "g", label: "Gasto", sub: "Compra, factura, café…", Icon: ArrowUpRightIcon, cls: "bg-out/12 text-out" },
+    { k: "i", label: "Ingreso", sub: "Nómina, bizum, extra…", Icon: ArrowDownLeftIcon, cls: "bg-in/12 text-in" },
+    { k: "shift", label: "Jornada", sub: "Horas trabajadas", Icon: ClockIcon, cls: "bg-primary/12 text-primary" },
+    { k: "payslip", label: "Nómina", sub: "Bruto, IRPF y neto", Icon: FileTextIcon, cls: "bg-gold/25 text-[#8a5a00] dark:text-gold" },
+  ] as const
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg">¿Qué quieres apuntar?</DialogTitle>
+          <DialogDescription>Elige y rellena en segundos.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2.5">
+          {opts.map(({ k, label, sub, Icon, cls }) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => onPick(k)}
+              className="grid gap-2.5 rounded-2xl bg-muted/60 p-4 text-left ring-1 ring-foreground/5 transition-transform active:scale-[0.97]"
+            >
+              <span className={cn("grid size-11 place-items-center rounded-2xl", cls)}>
+                <Icon className="size-5" />
+              </span>
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="block text-xs text-muted-foreground">{sub}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function StatusPill({ mode, demo }: { mode: string; demo: boolean }) {
   const [dot, txt] =
     mode === "loading"
       ? ["bg-muted-foreground", "Cargando…"]
-      : mode === "local"
-        ? ["bg-good", "Guardado en este navegador"]
-        : ["bg-bad", "Sin guardar"]
+      : demo
+        ? ["bg-gold", "Ejemplo"]
+        : mode === "local"
+          ? ["bg-good", "Guardado"]
+          : ["bg-bad", "Sin guardar"]
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8">
       <i className={cn("size-1.5 rounded-full", dot)} />
-      <span className="hidden sm:inline">{txt}</span>
-      <span className="sm:hidden">{mode === "local" ? "Guardado" : txt}</span>
+      {txt}
     </span>
-  )
-}
-
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme()
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      aria-label="Cambiar tema claro u oscuro"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-    >
-      <SunIcon className="hidden dark:block" />
-      <MoonIcon className="dark:hidden" />
-    </Button>
   )
 }
 
 function MonthBar({ month, setMonth }: { month: string; setMonth: (m: string) => void }) {
   return (
-    <div className="mb-3 grid grid-cols-[44px_1fr_44px] items-center gap-2">
-      <Button variant="outline" size="icon-lg" className="size-11" aria-label="Mes anterior" onClick={() => setMonth(addMonths(month, -1))}>
+    <div className="mb-4 flex items-center justify-between gap-2 rounded-2xl bg-card p-1.5 ring-1 ring-foreground/8">
+      <Button variant="ghost" size="icon" className="size-10 rounded-xl" aria-label="Mes anterior" onClick={() => setMonth(addMonths(month, -1))}>
         <ChevronLeftIcon />
       </Button>
       <div className="grid min-w-0 justify-items-center">
-        <h1 className="text-center font-heading text-[clamp(1.45rem,5.4vw,2rem)] leading-tight font-bold tracking-tight first-letter:uppercase">
-          {monthLabel(month)}
-        </h1>
+        <span className="font-heading text-base font-semibold tracking-tight first-letter:uppercase">{monthLabel(month)}</span>
         {month !== CUR() ? (
-          <Button variant="link" size="sm" className="h-6" onClick={() => setMonth(CUR())}>
+          <button type="button" className="text-[11px] font-medium text-primary" onClick={() => setMonth(CUR())}>
             Volver a este mes
-          </Button>
+          </button>
         ) : null}
       </div>
-      <Button variant="outline" size="icon-lg" className="size-11" aria-label="Mes siguiente" onClick={() => setMonth(addMonths(month, 1))}>
+      <Button variant="ghost" size="icon" className="size-10 rounded-xl" aria-label="Mes siguiente" onClick={() => setMonth(addMonths(month, 1))}>
         <ChevronRightIcon />
       </Button>
     </div>

@@ -1,29 +1,33 @@
 import type { Metadata, Viewport } from "next"
-import { Geist_Mono, Inter } from "next/font/google"
+import { Geist_Mono, Instrument_Serif, Inter, Sora } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
+const sora = Sora({ subsets: ["latin"], variable: "--font-display" })
+const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["italic", "normal"], variable: "--font-serif" })
+const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  title: "Mis finanzas",
-  description: "Tu caja personal: ingresos, gastos, presupuesto y metas de ahorro.",
+  title: "Orbe · Control financiero",
+  description: "Ingresos, gastos, gastos hormiga, ahorro, nóminas y horas de trabajo en tu móvil.",
+  applicationName: "Orbe",
+  appleWebApp: { capable: true, title: "Orbe", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 }
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#e9f6f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#172123" },
   ],
 }
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
 
 export default function RootLayout({
   children,
@@ -34,7 +38,7 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("antialiased", fontMono.variable, inter.variable, sora.variable, serif.variable, "font-sans")}
     >
       <body>
         <ThemeProvider>

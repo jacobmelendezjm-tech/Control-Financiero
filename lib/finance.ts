@@ -18,6 +18,10 @@ export interface Tx {
   cat: string
   n: string
   rec?: string
+  /** Gasto hormiga marcado a mano (true/false). Si falta, se decide por importe. */
+  h?: boolean
+  /** Movimiento creado desde una nómina. */
+  ps?: string
 }
 export interface Recurring {
   id: string
@@ -41,12 +45,60 @@ export interface Settings {
   saldoInicial: number
   recs: Recurring[]
   started: boolean
+  /** Importe máximo (céntimos) para que un gasto cuente como hormiga. */
+  hormigaMax: number
+  nombre: string
 }
+
+/* ---------- trabajo ---------- */
+export type ShiftKind = "trabajo" | "vacaciones" | "festivo" | "baja" | "libre"
+export interface Shift {
+  id: string
+  d: string // AAAA-MM-DD
+  kind: ShiftKind
+  ini: string // HH:MM
+  fin: string // HH:MM
+  pausa: number // minutos
+  /** Minutos extra a mano; si falta se calculan sobre la jornada diaria. */
+  ex?: number | null
+  n?: string
+}
+export interface WorkCfg {
+  horasDia: number
+  horasSemana: number
+  /** Precio bruto de la hora normal y de la extra, en céntimos (0 = sin calcular). */
+  precioHora: number
+  precioExtra: number
+  ini: string
+  fin: string
+  pausa: number
+}
+export interface WorkData {
+  cfg: WorkCfg
+  shifts: Shift[]
+}
+export interface Payslip {
+  id: string
+  m: string // AAAA-MM al que corresponde
+  dPago: string // AAAA-MM-DD
+  bruto: number
+  irpf: number // céntimos retenidos
+  ss: number // seguridad social
+  otros: number
+  neto: number
+  extras: number // importe de horas extra incluido en el bruto
+  horasExtra: number // minutos pagados
+  txId?: string
+  n?: string
+}
+
 export interface FinanceData {
   settings: Settings
   goals: Goal[]
   months: Record<string, Tx[]>
   hasSettings: boolean
+  work: WorkData
+  payslips: Payslip[]
 }
 
 /* ---------- utilidades ---------- */
@@ -173,7 +225,29 @@ export const defaultSettings = (): Settings => ({
   saldoInicial: 0,
   recs: [],
   started: false,
+  hormigaMax: 1000,
+  nombre: "",
 })
+export const defaultWork = (): WorkData => ({
+  cfg: { horasDia: 8, horasSemana: 40, precioHora: 0, precioExtra: 0, ini: "09:00", fin: "17:30", pausa: 30 },
+  shifts: [],
+})
+const SHIFT_KINDS: ShiftKind[] = ["trabajo", "vacaciones", "festivo", "baja", "libre"]
+export function normalizeWork(w: unknown): WorkData {
+  const d = defaultWork()
+  if (!w || typeof w !== "object") return d
+  const o = w as Partial<WorkData>
+  const cfg = Object.assign(d.cfg, o.cfg || {})
+  cfg.horasDia = Number(cfg.horasDia) || 8
+  cfg.horasSemana = Number(cfg.horasSemana) || 40
+  cfg.precioHora = Number(cfg.precioHora) || 0
+  cfg.precioExtra = Number(cfg.precioExtra) || 0
+  cfg.pausa = Number(cfg.pausa) || 0
+  const shifts = Array.isArray(o.shifts)
+    ? o.shifts.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(x.d) && SHIFT_KINDS.includes(x.kind))
+    : []
+  return { cfg, shifts: clone(shifts) }
+}
 export function normalizeSettings(s: unknown): Settings {
   const d = defaultSettings()
   if (!s || typeof s !== "object") return d
@@ -185,6 +259,8 @@ export function normalizeSettings(s: unknown): Settings {
   if (!out.budgets || typeof out.budgets !== "object") out.budgets = {}
   if (!Array.isArray(out.recs)) out.recs = []
   out.saldoInicial = Number(out.saldoInicial) || 0
+  out.hormigaMax = Number(out.hormigaMax) || 1000
+  out.nombre = typeof out.nombre === "string" ? out.nombre.slice(0, 30) : ""
   return out
 }
 export const byDate = (a: Tx, b: Tx) => b.d.localeCompare(a.d) || (b.k || 0) - (a.k || 0)
@@ -199,6 +275,8 @@ export function loadAll(o: Partial<FinanceData> & { settings?: unknown }): Finan
     goals: Array.isArray(o.goals) ? clone(o.goals) : [],
     months,
     hasSettings: !!(o.hasSettings || o.settings),
+    work: normalizeWork(o.work),
+    payslips: Array.isArray(o.payslips) ? clone(o.payslips).filter((p) => p && /^\d{4}-\d{2}$/.test(p.m)) : [],
   }
 }
 export const emptyData = (): FinanceData => ({
@@ -206,7 +284,49 @@ export const emptyData = (): FinanceData => ({
   goals: [],
   months: {},
   hasSettings: false,
+  work: defaultWork(),
+  payslips: [],
 })
+
+/* ---------- gastos hormiga ---------- */
+export function isHormiga(t: Tx, cm: Record<string, Category>, max: number) {
+  if (t.t !== "g") return false
+  if (typeof t.h === "boolean") return t.h
+  return !t.rec && t.c <= max && cm[t.cat]?.g !== "nec"
+}
+export function hormigaStats(data: FinanceData, month: string) {
+  const cm = catMap(data.settings.cats)
+  const max = data.settings.hormigaMax
+  const txs = (data.months[month] || []).filter((t) => isHormiga(t, cm, max))
+  const total = txs.reduce((a, t) => a + t.c, 0)
+  const cur = CUR()
+  const elapsed = month === cur ? new Date().getDate() : month < cur ? daysIn(month) : 0
+  const perDay = elapsed ? total / elapsed : 0
+  const groups: Record<string, { name: string; c: number; n: number }> = {}
+  for (const t of txs) {
+    const name = t.n ? cap(t.n.trim()) : cm[t.cat]?.n || "Sin nota"
+    const k = norm(name)
+    groups[k] ||= { name, c: 0, n: 0 }
+    groups[k].c += t.c
+    groups[k].n++
+  }
+  const weekday = [0, 0, 0, 0, 0, 0, 0]
+  for (const t of txs) {
+    const [y, m, d] = t.d.split("-").map(Number)
+    weekday[(new Date(y, m - 1, d).getDay() + 6) % 7] += t.c
+  }
+  const exp = monthStats(data.months[month] || []).exp
+  return {
+    txs,
+    total,
+    count: txs.length,
+    perDay,
+    year: Math.round(perDay * 365),
+    share: exp ? total / exp : null,
+    top: Object.values(groups).sort((a, b) => b.c - a.c),
+    weekday,
+  }
+}
 
 /* ---------- cálculos ---------- */
 export const catMap = (cats: Category[]) => {
@@ -423,25 +543,29 @@ export function buildDemo(): FinanceData {
     today = new Date().getDate(),
     months: Record<string, Tx[]> = {},
     s = defaultSettings()
-  s.budgets = { super: 16000, comer: 5000, ocio: 6000, ropa: 4000, transporte: 4500 }
-  s.saldoInicial = 85000
+  s.budgets = { super: 16000, comer: 6000, ocio: 5000, ropa: 4000, transporte: 4500 }
+  s.saldoInicial = 62000
   s.started = true
+  s.nombre = ""
   s.recs = [
-    { id: "r-nom", n: "Nómina", t: "i", c: 115000, cat: "nomina", dia: 1, on: true },
-    { id: "r-casa", n: "Aportación en casa", t: "g", c: 25000, cat: "casa", dia: 2, on: true },
-    { id: "r-ciclo", n: "Cuota del ciclo", t: "g", c: 16000, cat: "estudios", dia: 5, on: true },
+    { id: "r-casa", n: "Aportación en casa", t: "g", c: 22000, cat: "casa", dia: 2, on: true },
+    { id: "r-ciclo", n: "Cuota del ciclo", t: "g", c: 9000, cat: "estudios", dia: 5, on: true },
     { id: "r-movil", n: "Tarifa móvil", t: "g", c: 1500, cat: "facturas", dia: 8, on: true },
     { id: "r-spot", n: "Música en streaming", t: "g", c: 1199, cat: "subs", dia: 20, on: true },
+    { id: "r-gym", n: "Gimnasio", t: "g", c: 2990, cat: "salud", dia: 3, on: true },
   ]
   const variable: [TxType, string, number[], string | string[], number[]][] = [
-    ["g", "super", [2345, 1870, 3120, 2610, 1985], ["Mercadona", "Lidl", "Bonpreu", "Mercadona", "Lidl"], [4, 9, 15, 21, 27]],
-    ["g", "comer", [450, 1290, 380, 1650], ["Café", "Menú del día", "Café", "Pizza con amigos"], [6, 13, 19, 26]],
-    ["g", "transporte", [4000], "Abono de tren", [3]],
-    ["g", "ocio", [2200, 1800], ["Cine", "Concierto"], [10, 24]],
-    ["g", "ropa", [3499], "Zapatillas", [17]],
-    ["i", "extras", [4800], "Propinas", [28]],
+    ["g", "super", [2345, 1870, 3120, 2610], ["Mercadona", "Lidl", "Mercadona", "Lidl"], [4, 11, 18, 25]],
+    ["g", "comer", [150, 220, 180, 350, 120, 260, 190, 450], ["Café", "Vending", "Café", "Bollería", "Chicles", "Café", "Vending", "Café con tostada"], [2, 6, 9, 12, 16, 19, 23, 27]],
+    ["g", "comer", [1290, 1650], ["Menú del día", "Pizza con amigos"], [13, 26]],
+    ["g", "transporte", [2000], "Abono transporte", [1]],
+    ["g", "ocio", [850, 1800], ["Cine", "Concierto"], [10, 24]],
+    ["g", "ropa", [2499], "Zapatillas", [17]],
+    ["g", "subs", [299], "App de fotos", [14]],
   ]
   const fac = [1, 0.92, 1.12, 0.97, 1.06, 0.9]
+  const netos = [91240, 84630, 88710, 92980, 86150, 89420]
+  const payslips: Payslip[] = []
   for (let k = 5; k >= 0; k--) {
     const m = addMonths(cur, -k),
       last = k === 0 ? today : daysIn(m),
@@ -467,12 +591,48 @@ export function buildDemo(): FinanceData {
       })
     })
     if (k === 2) items.push({ id: "d2reg", k: ++seq, d: `${m}-14`, t: "g", c: 2500, cat: "regalos", n: "Cumpleaños" })
+    // Nómina del mes anterior, cobrada el día 1.
+    if (k > 0 || today >= 1) {
+      const neto = netos[k]
+      const extras = [4750, 0, 2850, 6650, 1900, 3800][k]
+      const bruto = Math.round((neto + 6500) / 0.9352)
+      const ss = Math.round(bruto * 0.0648)
+      const irpf = bruto - ss - neto
+      const id = `ps${k}`
+      const txId = `d${k}nom`
+      payslips.push({ id, m: addMonths(m, -1), dPago: `${m}-01`, bruto, irpf, ss, otros: 0, neto, extras, horasExtra: Math.round(extras / 950) * 60, txId })
+      items.push({ id: txId, k: ++seq, d: `${m}-01`, t: "i", c: neto, cat: "nomina", n: "Nómina", ps: id })
+    }
     items.sort(byDate)
     months[m] = items
   }
+  // Jornadas: lunes a viernes 9:00–17:30 con media hora de pausa; algunos días se alarga.
+  const shifts: Shift[] = []
+  for (let k = 2; k >= 0; k--) {
+    const m = addMonths(cur, -k),
+      last = k === 0 ? today : daysIn(m)
+    const [y, mo] = m.split("-").map(Number)
+    for (let d = 1; d <= last; d++) {
+      const wd = new Date(y, mo - 1, d).getDay()
+      if (wd === 0 || wd === 6) continue
+      const date = `${m}-${pad(d)}`
+      if (k === 1 && d >= 11 && d <= 15) {
+        shifts.push({ id: `w${k}${d}`, d: date, kind: "vacaciones", ini: "", fin: "", pausa: 0 })
+        continue
+      }
+      const long = (d * 7 + k) % 5 === 0
+      const fin = long ? ((d + k) % 2 ? "19:30" : "19:00") : "17:30"
+      shifts.push({ id: `w${k}${d}`, d: date, kind: "trabajo", ini: "09:00", fin, pausa: 30 })
+    }
+  }
   const goals: Goal[] = [
     { id: "g1", n: "Fondo de emergencia", obj: 150000, ah: 46000 },
-    { id: "g2", n: "Portátil para el ciclo", obj: 90000, ah: 32000, fecha: addMonths(cur, 6) },
+    { id: "g2", n: "Portátil nuevo", obj: 90000, ah: 32000, fecha: addMonths(cur, 6) },
+    { id: "g3", n: "Viaje de verano", obj: 60000, ah: 51500, fecha: addMonths(cur, 4) },
   ]
-  return { settings: s, goals, months, hasSettings: true }
+  const work = defaultWork()
+  work.cfg.precioHora = 750
+  work.cfg.precioExtra = 950
+  work.shifts = shifts
+  return { settings: s, goals, months, hasSettings: true, work, payslips: payslips.sort((a, b) => b.m.localeCompare(a.m)) }
 }
