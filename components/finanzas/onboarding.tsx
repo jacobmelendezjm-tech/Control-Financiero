@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
+import { CloudIcon, SmartphoneIcon, TriangleAlertIcon, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
+import { Spinner } from "@/components/ui/skeleton"
 import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Objetivo } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
@@ -29,7 +30,15 @@ export interface OnboardAnswers {
   metaObj?: number
 }
 
-type StepId = "hola" | "nombre" | "cobro" | "sueldo" | "jornada" | "saldo" | "objetivo" | "listo"
+type StepId = "hola" | "nombre" | "cobro" | "sueldo" | "jornada" | "saldo" | "objetivo" | "cuenta" | "listo"
+
+/** Lo que el formulario necesita de la cuenta (hooks/use-cloud). */
+export interface OnboardCloud {
+  enabled: boolean
+  signedIn: boolean
+  sendCode: (email: string) => Promise<string | null>
+  verifyCode: (email: string, code: string) => Promise<string | null>
+}
 
 const COBROS: { v: Cobro; l: string; d: string }[] = [
   { v: "fija", l: "Nómina mensual", d: "Cobro cada mes; puede variar un poco" },
@@ -51,11 +60,13 @@ export function Onboarding({
   data,
   onFinish,
   onLater,
+  cloud,
 }: {
   open: boolean
   data: FinanceData
   onFinish: (a: OnboardAnswers, tour: boolean) => void
   onLater: () => void
+  cloud?: OnboardCloud
 }) {
   const p = data.settings.perfil || {}
   const cfg = data.work.cfg
@@ -75,6 +86,15 @@ export function Onboarding({
   const [ahorro, setAhorro] = React.useState(p.ahorroMes ? fmtPlain(p.ahorroMes) : "")
   const [metaN, setMetaN] = React.useState("")
   const [metaO, setMetaO] = React.useState("")
+  // Paso «cuenta»: crear cuenta con el correo o seguir solo en el dispositivo.
+  const [modo, setModo] = React.useState<"nube" | "local" | null>(null)
+  const [email, setEmail] = React.useState("")
+  const [code, setCode] = React.useState("")
+  const [codeSent, setCodeSent] = React.useState(false)
+  const [verified, setVerified] = React.useState(false)
+  const [busy, setBusy] = React.useState(false)
+  // Se decide al abrir: si ya hay sesión, no se pregunta.
+  const [askAccount] = React.useState(() => !!cloud?.enabled && !cloud.signedIn)
   const [err, setErr] = React.useState("")
   const panelRef = React.useRef<HTMLDivElement>(null)
 
@@ -87,6 +107,7 @@ export function Onboarding({
     ...(works ? (["jornada"] as StepId[]) : []),
     "saldo",
     "objetivo",
+    ...(askAccount ? (["cuenta"] as StepId[]) : []),
     "listo",
   ]
   const idx = flow.indexOf(step)
@@ -142,6 +163,8 @@ export function Onboarding({
       if (hd.trim() && !(h > 0 && h <= 24)) return "Las horas al día van de 0 a 24."
     }
     if (step === "saldo" && saldo.trim() && parseMoney(saldo) == null) return "Escribe un importe válido, por ejemplo 450."
+    if (step === "cuenta" && modo === "nube" && !verified)
+      return "Termina de verificar tu correo o elige «Seguir sin cuenta»."
     if (step === "objetivo") {
       if (ahorro.trim() && !parsePos(ahorro)) return "Escribe cuánto quieres ahorrar, por ejemplo 100."
       if (metaO.trim() && !parsePos(metaO)) return "Revisa el importe de la meta."
@@ -164,6 +187,29 @@ export function Onboarding({
     setStep(flow[Math.min(idx + 1, flow.length - 1)])
   }
 
+  const sendCode = async () => {
+    const v = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return setErr("Escribe un correo válido.")
+    if (!cloud) return
+    setBusy(true)
+    setErr("")
+    const e = await cloud.sendCode(v)
+    setBusy(false)
+    if (e) return setErr(e)
+    setEmail(v)
+    setCodeSent(true)
+  }
+  const verify = async () => {
+    if (!/^\d{6,10}$/.test(code.trim())) return setErr("Escribe el código que te ha llegado por correo.")
+    if (!cloud) return
+    setBusy(true)
+    setErr("")
+    const e = await cloud.verifyCode(email, code)
+    setBusy(false)
+    if (e) return setErr(e)
+    setVerified(true)
+  }
+
   if (!open) return null
 
   const name = nombre.trim()
@@ -182,6 +228,10 @@ export function Onboarding({
                 ? { mood: "wow", say: "Se queda solo en tu móvil." }
                 : step === "objetivo"
                   ? { mood: "happy", say: "¡Vamos a por ello!" }
+                  : step === "cuenta"
+                    ? verified
+                      ? { mood: "wow", say: "¡Cuenta creada! Tus datos, a salvo." }
+                      : { mood: "think", say: "Tú eliges: nube o solo aquí." }
                   : { mood: "wave", say: name ? `¡Encantado, ${name}!` : "¡Todo listo!" }
 
   return (
@@ -398,6 +448,129 @@ export function Onboarding({
               </>
             ) : null}
 
+            {step === "cuenta" ? (
+              <>
+                <Title>¿Dónde guardamos tus datos?</Title>
+                <div role="radiogroup" aria-label="Dónde guardar tus datos" className="grid gap-2">
+                  {(
+                    [
+                      ["nube", CloudIcon, "Crear cuenta con mi correo", "Copia segura en la nube y tus datos en todos tus dispositivos. Sin contraseñas."],
+                      ["local", SmartphoneIcon, "Seguir sin cuenta", "Todo se guarda solo en este dispositivo."],
+                    ] as const
+                  ).map(([v, Icon, l, d], k) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="radio"
+                      aria-checked={modo === v}
+                      data-autofocus={k === 0 ? "" : undefined}
+                      disabled={verified}
+                      onClick={() => {
+                        setModo(v)
+                        setErr("")
+                      }}
+                      className={cn(
+                        "flex items-start gap-3 rounded-2xl px-4 py-3 text-left ring-1 ring-foreground/10 transition-colors",
+                        modo === v ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
+                      )}
+                    >
+                      <Icon className="mt-0.5 size-5 shrink-0 text-primary" />
+                      <span className="grid">
+                        <span className="font-medium">{l}</span>
+                        <span className="text-xs text-muted-foreground">{d}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {modo === "local" ? (
+                  <div role="note" className="flex gap-2.5 rounded-2xl bg-warn/15 px-3.5 py-3 text-sm ring-1 ring-warn/40">
+                    <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-[#8a5a00] dark:text-warn" />
+                    <span>
+                      Tus datos se quedarán <b>solo en este dispositivo</b>. Si borras los datos del navegador o cambias de móvil, se
+                      perderán. Cuando quieras, en <b>Más › Guarda tus datos en la nube</b> pones tu correo y se sube todo lo que hayas
+                      apuntado.
+                    </span>
+                  </div>
+                ) : null}
+
+                {modo === "nube" ? (
+                  verified ? (
+                    <p className="flex items-center gap-2 rounded-2xl bg-good/12 px-3.5 py-3 text-sm font-medium text-good">
+                      ✓ Cuenta lista: {email}. Tus datos se guardarán en la nube.
+                    </p>
+                  ) : !codeSent ? (
+                    <div className="grid gap-2">
+                      <Field label="Tu correo electrónico" id="ob-email">
+                        <Input
+                          id="ob-email"
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          placeholder="tu@correo.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void sendCode()
+                            }
+                          }}
+                          className="h-12"
+                        />
+                      </Field>
+                      <Button type="button" variant="outline" className="h-11 rounded-full" disabled={busy} onClick={() => void sendCode()}>
+                        {busy ? <Spinner /> : null} Enviarme un código
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2">
+                      <p className="text-sm">
+                        Te he enviado un código a <b>{email}</b>. Puede tardar un minuto; mira también en spam.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          aria-label="Código del correo"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          placeholder="Código"
+                          maxLength={10}
+                          value={code}
+                          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void verify()
+                            }
+                          }}
+                          className="h-12 font-heading text-lg tracking-[0.25em]"
+                        />
+                        <Button type="button" className="h-12 shrink-0 rounded-full px-5" disabled={busy} onClick={() => void verify()}>
+                          {busy ? <Spinner /> : null} Verificar
+                        </Button>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => void sendCode()}>
+                          Reenviar el código
+                        </button>
+                        <button
+                          type="button"
+                          className="text-muted-foreground underline-offset-2 hover:underline"
+                          onClick={() => {
+                            setCodeSent(false)
+                            setCode("")
+                            setErr("")
+                          }}
+                        >
+                          Cambiar de correo
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ) : null}
+              </>
+            ) : null}
+
             {step === "listo" ? (
               <>
                 <Title>{name ? `¡Listo, ${name}!` : "¡Listo!"}</Title>
@@ -407,6 +580,8 @@ export function Onboarding({
                   <Summary on={!!saldo.trim()}>Tu saldo empieza con tu dinero real</Summary>
                   <Summary on={!!objetivo}>Tus consejos irán enfocados a tu objetivo</Summary>
                   <Summary on={!!ahorro.trim()}>Verás tu progreso de ahorro del mes en Inicio</Summary>
+                  <Summary on={verified}>Tus datos se guardan también en la nube, en todos tus dispositivos</Summary>
+                  <Summary on={askAccount && !verified}>Tus datos se guardan en este dispositivo (puedes subirlos a la nube desde «Más»)</Summary>
                 </ul>
                 <p className="text-xs text-muted-foreground">Puedes cambiar todo esto cuando quieras desde «Más».</p>
               </>

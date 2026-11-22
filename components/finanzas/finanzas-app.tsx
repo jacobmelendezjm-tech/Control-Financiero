@@ -828,7 +828,14 @@ export function FinanzasApp() {
       <OrbiTour open={tour} onClose={() => setTour(false)} />
       <ConflictDialog cloud={cloud} />
       {loaded && onboard ? (
-        <Onboarding key={obKey} open data={real} onFinish={onboardFinish} onLater={onboardLater} />
+        <Onboarding
+          key={obKey}
+          open
+          data={real}
+          onFinish={onboardFinish}
+          onLater={onboardLater}
+          cloud={{ enabled: cloud.enabled, signedIn: !!cloud.user, sendCode: cloud.sendCode, verifyCode: cloud.verifyCode }}
+        />
       ) : null}
       {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour || onboard} /> : null}
       <SideNav view={view} onGo={(v) => go(v)} onAdd={() => loaded && open({ kind: "add" })} />

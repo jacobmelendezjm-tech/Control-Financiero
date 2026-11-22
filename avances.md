@@ -90,6 +90,10 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - Al escribir en el móvil, el teclado tapaba los campos. Ahora los diálogos y la hoja de bienvenida se colocan en la zona visible encima del teclado (`components/keyboard-aware.tsx`, `visualViewport`), el campo activo se centra solo y en Android la página encoge con el teclado (`interactiveWidget: resizes-content`).
 
+### Cuenta en la bienvenida
+
+- Nuevo paso «¿Dónde guardamos tus datos?» en el formulario de bienvenida: crear cuenta con el correo (código verificado sin salir del formulario) o seguir sin cuenta, con aviso de que los datos quedan solo en el dispositivo y de que pueden subirse a la nube más adelante desde «Más». No aparece si ya hay sesión.
+
 ---
 
 ## Plantilla para nuevas entradas
