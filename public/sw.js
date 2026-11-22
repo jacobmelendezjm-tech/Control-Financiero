@@ -1,6 +1,6 @@
 /* Orbe: service worker para abrir la app sin conexión.
    Los datos viven en el navegador (localStorage); aquí solo se guarda la app. */
-const CACHE = "orbe-v1"
+const CACHE = "orbe-v2"
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/orbe.svg"]
 
 self.addEventListener("install", (e) => {
@@ -28,10 +28,11 @@ self.addEventListener("fetch", (e) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone()
-          caches.open(CACHE).then((c) => c.put("/", copy))
+          // Cada página con su propia copia (sin los parámetros de la URL).
+          if (res.ok) caches.open(CACHE).then((c) => c.put(url.pathname, copy))
           return res
         })
-        .catch(() => caches.match("/").then((r) => r || Response.error()))
+        .catch(() => caches.match(url.pathname).then((r) => r || caches.match("/")).then((r) => r || Response.error()))
     )
     return
   }

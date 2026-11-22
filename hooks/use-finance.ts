@@ -73,11 +73,21 @@ export function useFinance() {
     } catch {}
   }, [])
 
-  const hasReal =
-    data.hasSettings || Object.keys(data.months).length > 0 || data.goals.length > 0
+  const hasReal = hasRealData(data)
   const showingDemo = mode !== "loading" && !demoOff && !hasReal
 
+  /** Sustituye todos los datos (p. ej. al traerlos de la nube). */
+  const replace = React.useCallback(
+    (next: FinanceData) => {
+      setDemoOff(true)
+      setData(next)
+      persist(next)
+    },
+    [persist]
+  )
+
   return {
+    replace,
     real: data,
     view: showingDemo && demo ? demo : data,
     showingDemo,
@@ -87,6 +97,17 @@ export function useFinance() {
     wipe,
     dismissDemo: () => setDemoOff(true),
   }
+}
+
+/** ¿Hay datos propios (no de ejemplo)? */
+export function hasRealData(d: FinanceData) {
+  return (
+    d.hasSettings ||
+    Object.keys(d.months).length > 0 ||
+    d.goals.length > 0 ||
+    d.work.shifts.length > 0 ||
+    d.payslips.length > 0
+  )
 }
 
 export type FinanceStore = ReturnType<typeof useFinance>

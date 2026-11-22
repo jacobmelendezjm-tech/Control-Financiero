@@ -54,6 +54,8 @@ import {
   type Filters,
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
+import { useCloud, type CloudStatus } from "@/hooks/use-cloud"
+import { ConflictDialog, STATUS_TEXT } from "@/components/finanzas/account-card"
 import { orbiSay, pick } from "@/lib/orbi"
 import { scrollToY, setScrollLocked } from "@/lib/scroll"
 import { usePwa } from "@/hooks/use-pwa"
@@ -188,6 +190,7 @@ async function downloadFile(filename: string, text: string, onFallback: () => vo
 export function FinanzasApp() {
   const store = useFinance()
   const pwa = usePwa()
+  const cloud = useCloud(store)
   const { real, view: D, showingDemo, loaded, mode, update } = store
   const [view, setView] = React.useState<View>("inicio")
   const [month, setMonth] = React.useState(CUR)
@@ -815,6 +818,7 @@ export function FinanzasApp() {
     <>
       <Splash />
       <OrbiTour open={tour} onClose={() => setTour(false)} />
+      <ConflictDialog cloud={cloud} />
       {loaded && onboard ? (
         <Onboarding key={obKey} open data={real} onFinish={onboardFinish} onLater={onboardLater} />
       ) : null}
@@ -840,7 +844,7 @@ export function FinanzasApp() {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <StatusPill mode={mode} demo={showingDemo} />
+              <StatusPill mode={mode} demo={showingDemo} cloud={cloud.user ? cloud.status : null} onCloud={() => go("mas")} />
               <ThemeToggle />
             </div>
           </div>
@@ -919,6 +923,7 @@ export function FinanzasApp() {
                   onBuddy={toggleBuddy}
                   onTour={startTour}
                   onProfile={openOnboarding}
+                  cloud={cloud}
                 />
               ) : (
                 <AjustesView
@@ -1153,7 +1158,38 @@ function AddSheet({ onClose, onPick }: { onClose: () => void; onPick: (k: "g" | 
   )
 }
 
-function StatusPill({ mode, demo }: { mode: string; demo: boolean }) {
+function StatusPill({
+  mode,
+  demo,
+  cloud,
+  onCloud,
+}: {
+  mode: string
+  demo: boolean
+  cloud: CloudStatus | null
+  onCloud: () => void
+}) {
+  if (cloud) {
+    const [dot, txt] =
+      cloud === "synced"
+        ? ["bg-good", "En la nube"]
+        : cloud === "syncing" || cloud === "pending"
+          ? ["bg-gold animate-pulse", "Sincronizando"]
+          : cloud === "offline"
+            ? ["bg-muted-foreground", "Sin conexión"]
+            : ["bg-bad", "Revisar nube"]
+    return (
+      <button
+        type="button"
+        onClick={onCloud}
+        title={STATUS_TEXT[cloud]}
+        className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8"
+      >
+        <i className={cn("size-1.5 rounded-full", dot)} />
+        {txt}
+      </button>
+    )
+  }
   const [dot, txt] =
     mode === "loading"
       ? ["bg-muted-foreground", "Cargando…"]

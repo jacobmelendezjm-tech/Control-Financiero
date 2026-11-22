@@ -25,6 +25,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { OrbeMark } from "@/components/finanzas/logo"
 import { Orbi } from "@/components/finanzas/orbi"
+import { AccountCard } from "@/components/finanzas/account-card"
+import type { Cloud } from "@/hooks/use-cloud"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Eyebrow } from "@/components/finanzas/kit"
@@ -49,6 +51,7 @@ export function MoreView({
   onBuddy,
   onTour,
   onProfile,
+  cloud,
 }: {
   nombre: string
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
@@ -58,6 +61,7 @@ export function MoreView({
   onBuddy: (on: boolean) => void
   onTour: () => void
   onProfile: () => void
+  cloud: Cloud
 }) {
   const { resolvedTheme } = useTheme()
   const switchTheme = useThemeSwitch()
@@ -87,6 +91,8 @@ export function MoreView({
       </div>
 
       <div className="grid min-w-0 gap-4">
+        <AccountCard cloud={cloud} />
+
         <section className="relative overflow-hidden rounded-[28px] bg-card p-5 ring-1 ring-foreground/8">
           <div aria-hidden className="absolute -right-6 -bottom-8 size-40 rounded-full bg-glow/15 blur-2xl" />
           <div className="relative flex items-center gap-4">
@@ -194,7 +200,12 @@ export function MoreView({
           </button>
         </Card>
         <p className="px-1 text-center text-xs text-muted-foreground">
-          Tus datos se guardan solo en este dispositivo. Descarga una copia de vez en cuando desde Ajustes.
+          {cloud.user
+            ? "Tus datos se guardan en este dispositivo y en la nube."
+            : "Tus datos se guardan solo en este dispositivo. Crea una cuenta o descarga una copia de vez en cuando desde Ajustes."}{" "}
+          <a href="/privacidad" className="underline underline-offset-2">
+            Privacidad
+          </a>
         </p>
       </div>
     </div>
