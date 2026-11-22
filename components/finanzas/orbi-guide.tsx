@@ -37,10 +37,11 @@ function Bubble({
   children,
   tail,
   tailX,
+  tailY,
   className,
   style,
   ...rest
-}: React.ComponentProps<"div"> & { tail: "top" | "bottom" | "none"; tailX?: number }) {
+}: React.ComponentProps<"div"> & { tail: "top" | "bottom" | "left" | "none"; tailX?: number; tailY?: number }) {
   return (
     <div
       {...rest}
@@ -55,9 +56,13 @@ function Bubble({
           aria-hidden
           className={cn(
             "absolute size-4 rotate-45 bg-card ring-1 ring-glow/35",
-            tail === "top" ? "-top-2 [clip-path:polygon(0_0,100%_0,0_100%)]" : "-bottom-2 [clip-path:polygon(100%_0,100%_100%,0_100%)]"
+            tail === "top"
+              ? "-top-2 [clip-path:polygon(0_0,100%_0,0_100%)]"
+              : tail === "left"
+                ? "-left-2 [clip-path:polygon(0_0,0_100%,100%_100%)]"
+                : "-bottom-2 [clip-path:polygon(100%_0,100%_100%,0_100%)]"
           )}
-          style={{ left: (tailX ?? 40) - 8 }}
+          style={tail === "left" ? { top: (tailY ?? 40) - 8 } : { left: (tailX ?? 40) - 8 }}
         />
       ) : null}
       {children}
@@ -131,7 +136,7 @@ export function OrbiBuddy({
 
   if (hidden) return null
   return (
-    <div className="pointer-events-none fixed right-3 bottom-[calc(84px+env(safe-area-inset-bottom))] z-40 md:right-6 md:bottom-28">
+    <div className="pointer-events-none fixed right-3 bottom-[calc(84px+env(safe-area-inset-bottom))] z-40 lg:right-6 lg:bottom-6">
       {line ? <BuddyBubble key={stamp} line={line} onClose={() => setLine(null)} /> : null}
       <button
         type="button"
@@ -177,6 +182,15 @@ function BuddyBubble({ line, onClose }: { line: OrbiLine; onClose: () => void })
 }
 
 /* ---------- tutorial ---------- */
+/** Primer elemento visible con ese data-tour (la barra inferior y la lateral comparten nombres). */
+function findTarget(name: string) {
+  for (const el of document.querySelectorAll(`[data-tour="${name}"]`)) {
+    const r = el.getBoundingClientRect()
+    if (r.width > 0 && r.height > 0) return el
+  }
+  return null
+}
+
 interface Step {
   target?: string
   fixed?: boolean
@@ -311,7 +325,7 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
       if (!alive) return
       setVp({ w: window.innerWidth, h: window.innerHeight })
       if (!step.target) return setHl(null)
-      const el = document.querySelector(`[data-tour="${step.target}"]`)
+      const el = findTarget(step.target)
       if (!el) return
       const r = el.getBoundingClientRect()
       const pad = 8
@@ -326,7 +340,7 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
       setReady(true)
       return
     }
-    const el = document.querySelector(`[data-tour="${step.target}"]`)
+    const el = findTarget(step.target)
     if (!el) {
       // Si el elemento no existe (p. ej. sin datos), se salta el paso.
       const next = i + dir.current
@@ -379,8 +393,17 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
   // Geometría: Orbi entre el elemento y la burbuja.
   const BW = Math.min(340, vp.w - 32)
   const target = step.target ? hl : null
-  let ox: number, oy: number, bTop: number, tail: "top" | "bottom"
-  if (!target) {
+  let ox: number, oy: number, bTop: number, tail: "top" | "bottom" | "left"
+  let bLeftSide: number | null = null
+  const side = !!target && step.fixed && vp.w >= 1024 && target.x + target.w < 320
+  if (target && side) {
+    // Barra lateral de escritorio: Orbi a la derecha del elemento y la burbuja a su lado.
+    ox = target.x + target.w + 10
+    oy = Math.min(Math.max(target.y + target.h / 2 - OH / 2, 12), vp.h - OH - 12)
+    bLeftSide = ox + O + 10
+    bTop = Math.min(Math.max(target.y + target.h / 2 - bh / 2, 16), vp.h - bh - 16)
+    tail = "left"
+  } else if (!target) {
     ox = vp.w / 2 - O / 2
     oy = Math.max(24, vp.h / 2 - (OH + bh) / 2 - 20)
     bTop = oy + OH + 6
@@ -390,6 +413,12 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
     oy = target.y - OH - 2
     bTop = oy - bh - 4
     tail = "bottom"
+    if (bTop < 16) {
+      // No cabe encima: debajo del elemento.
+      oy = target.y + target.h + 2
+      bTop = oy + OH + 4
+      tail = "top"
+    }
   } else {
     ox = Math.min(Math.max(target.x + target.w / 2 - O / 2, 12), vp.w - O - 12)
     oy = target.y + target.h + 2
@@ -400,7 +429,7 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
     }
     tail = "top"
   }
-  const bLeft = Math.min(Math.max(ox + O / 2 - BW / 2, 16), vp.w - BW - 16)
+  const bLeft = bLeftSide ?? Math.min(Math.max(ox + O / 2 - BW / 2, 16), vp.w - BW - 16)
   const tailX = ox + O / 2 - bLeft
   const last = i === STEPS.length - 1
 
@@ -443,7 +472,7 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
         className="fixed transition-[top,left] duration-500 ease-out"
         style={{ top: bTop, left: bLeft, width: BW, opacity: ready ? 1 : 0 }}
       >
-        <Bubble key={i} tail={tail} tailX={tailX} className="relative">
+        <Bubble key={i} tail={tail} tailX={tailX} tailY={oy + OH * 0.33 - bTop} className="relative">
           <div className="mb-1 flex items-start justify-between gap-3">
             <h2 id="orbi-tour-title" className="font-heading text-[17px] font-semibold tracking-tight">
               {step.title}

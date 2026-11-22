@@ -122,11 +122,11 @@ function TxRow({ t, cm, onOpen }: { t: Tx; cm: Record<string, Category>; onOpen:
           {t.n ? <span className="truncate text-sm text-muted-foreground">{t.n}</span> : null}
         </span>
         {t.rec ? (
-          <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider">
+          <Badge variant="outline" className="font-heading tabular-nums text-[10px] uppercase tracking-wider">
             Fijo
           </Badge>
         ) : null}
-        <span className={cn("font-mono font-semibold whitespace-nowrap tabular-nums", t.t === "i" && "text-pos")}>
+        <span className={cn("font-heading tabular-nums font-semibold whitespace-nowrap", t.t === "i" && "text-pos")}>
           {t.t === "i" ? "+" : MINUS}
           {eur(t.c)}
         </span>
@@ -164,7 +164,8 @@ export function Banners({ demo, memory, onStart }: { demo: boolean; memory: bool
 }
 
 const ViewTitle = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="mt-2 mb-4 font-heading text-2xl font-bold tracking-tight">{children}</h2>
+  // La cabecera de la app ya muestra el título: aquí solo para lectores de pantalla.
+  <h2 className="sr-only">{children}</h2>
 )
 
 /* ---------- Resumen ---------- */
@@ -231,8 +232,8 @@ export function ResumenView({
             </dl>
             {proj ? (
               <p className="mt-4 font-sans text-sm text-muted-foreground">
-                Gasto variable medio: <b className="font-mono text-foreground">{eur(proj.avg)}</b> al día. A este ritmo,
-                cerrarás el mes con unos <b className="font-mono text-foreground">{eur0(proj.total)}</b> de gastos.
+                Gasto variable medio: <b className="font-heading tabular-nums text-foreground">{eur(proj.avg)}</b> al día. A este ritmo,
+                cerrarás el mes con unos <b className="font-heading tabular-nums text-foreground">{eur0(proj.total)}</b> de gastos.
               </p>
             ) : null}
             <p className="mt-5 text-center text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -262,7 +263,7 @@ export function ResumenView({
                         {cm[rc.cat]?.n || ""} · día {rc.dia}
                       </span>
                     </span>
-                    <span className="font-mono text-sm font-semibold">
+                    <span className="font-heading tabular-nums text-sm font-semibold">
                       {rc.t === "i" ? "+" : MINUS}
                       {eur(rc.c)}
                     </span>
@@ -307,7 +308,7 @@ export function ResumenView({
                       <li key={n}>
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="font-medium">{n}</span>
-                          <span className="font-mono text-sm font-semibold">{pct(v)}</span>
+                          <span className="font-heading tabular-nums text-sm font-semibold">{pct(v)}</span>
                         </div>
                         <div role="img" aria-label={`${n}: ${pct(v)} de tus ingresos, objetivo ${txt}`}>
                           <Bar value={v} marker={t} state={s} />
@@ -334,7 +335,7 @@ export function ResumenView({
           <CardHeader>
             <CardTitle>¿En qué se va el dinero?</CardTitle>
             {cats.length ? (
-              <CardAction className="font-mono text-sm text-muted-foreground">{eur(st.exp)}</CardAction>
+              <CardAction className="font-heading tabular-nums text-sm text-muted-foreground">{eur(st.exp)}</CardAction>
             ) : null}
           </CardHeader>
           <CardContent>
@@ -424,7 +425,7 @@ function CategoryBars({
           <li key={c.cat}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{cm[c.cat]?.n || "Sin categoría"}</span>
-              <span className="font-mono text-sm font-semibold whitespace-nowrap">{eur(c.c)}</span>
+              <span className="font-heading tabular-nums text-sm font-semibold whitespace-nowrap">{eur(c.c)}</span>
             </div>
             <Bar value={c.c / max} marker={lim ? lim / max : undefined} />
             <div className="flex flex-wrap gap-2.5 text-xs text-muted-foreground">
@@ -513,7 +514,7 @@ function SixMonthChart({ data, month, onMonth }: { data: FinanceData; month: str
           {ticks.map((v) => (
             <g key={v}>
               <line className={v === 0 ? "stroke-border" : "stroke-border/60"} x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} />
-              <text className="fill-muted-foreground font-mono text-[10px]" x={pl - 6} y={y(v) + 3.5} textAnchor="end">
+              <text className="fill-muted-foreground font-heading tabular-nums text-[10px]" x={pl - 6} y={y(v) + 3.5} textAnchor="end">
                 {eur0(v)}
               </text>
             </g>
@@ -550,7 +551,7 @@ function SixMonthChart({ data, month, onMonth }: { data: FinanceData; month: str
         {hs ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-lg bg-foreground px-2.5 py-2 font-mono text-xs leading-relaxed whitespace-nowrap text-background"
+            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-lg bg-foreground px-2.5 py-2 font-heading tabular-nums text-xs leading-relaxed whitespace-nowrap text-background"
             style={{ left: Math.min(Math.max(pl + gw * hi + gw / 2, 90), W - 90) }}
           >
             <strong>{cap(monthLabel(hs.m))}</strong>
@@ -567,7 +568,7 @@ function SixMonthChart({ data, month, onMonth }: { data: FinanceData; month: str
       <details className="mt-2">
         <summary className="cursor-pointer text-sm font-semibold text-primary">Ver como tabla</summary>
         <div className="overflow-x-auto">
-          <table className="mt-2 w-full border-collapse font-mono text-sm tabular-nums">
+          <table className="mt-2 w-full border-collapse font-heading tabular-nums text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground">
                 {["Mes", "Ingresos", "Gastos", "Balance"].map((h, i) => (
@@ -690,20 +691,20 @@ export function MovView({
       </div>
       <p className="mx-1 mb-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>
-          <b className="font-mono text-foreground">{list.length}</b> {list.length === 1 ? "movimiento" : "movimientos"}
+          <b className="font-heading tabular-nums text-foreground">{list.length}</b> {list.length === 1 ? "movimiento" : "movimientos"}
         </span>
         <span>
-          Ingresos <b className="font-mono text-foreground">+{eur(st.inc)}</b>
+          Ingresos <b className="font-heading tabular-nums text-foreground">+{eur(st.inc)}</b>
         </span>
         <span>
           Gastos{" "}
-          <b className="font-mono text-foreground">
+          <b className="font-heading tabular-nums text-foreground">
             {MINUS}
             {eur(st.exp)}
           </b>
         </span>
         <span>
-          Balance <b className="font-mono text-foreground">{eurS(st.bal)}</b>
+          Balance <b className="font-heading tabular-nums text-foreground">{eurS(st.bal)}</b>
         </span>
       </p>
       {!list.length ? (
@@ -731,7 +732,7 @@ export function MovView({
                     {dayLabel(g.d)}
                     {f.all ? " " + g.d.slice(0, 4) : ""}
                   </span>
-                  <span className="font-mono tracking-normal normal-case">{eurS(s.bal)}</span>
+                  <span className="font-heading tabular-nums tracking-normal normal-case">{eurS(s.bal)}</span>
                 </h3>
                 <ul className="overflow-hidden rounded-xl border bg-card">
                   {g.items.map((t) => (
@@ -788,7 +789,7 @@ function MoneyInput({
       onChange={(e) => setV(e.target.value)}
       onBlur={() => v !== value && onCommit(v)}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className={cn("text-right font-mono", className)}
+      className={cn("text-right font-heading tabular-nums", className)}
     />
   )
 }
@@ -864,16 +865,16 @@ export function PresView({
                       <Label htmlFor={id} className="min-w-0 font-medium">
                         {r.cat.n}
                       </Label>
-                      <span className="flex items-center gap-1.5 font-mono text-sm font-semibold whitespace-nowrap">
+                      <span className="flex items-center gap-1.5 font-heading tabular-nums text-sm font-semibold whitespace-nowrap">
                         {eur(r.spent)} <span className="font-sans font-normal text-muted-foreground">de</span>
                         <MoneyInput
                           id={id}
                           value={r.limit ? fmtPlain(r.limit) : ""}
-                          placeholder="sin límite"
+                          placeholder="—"
                           disabled={demo}
                           aria-label={`Límite mensual para ${r.cat.n} en euros`}
                           onCommit={(raw) => onBudget(r.cat.id, raw)}
-                          className="h-8 w-24"
+                          className="h-8 w-20"
                         />
                         €
                       </span>
@@ -902,7 +903,7 @@ function Kpi({ k, v }: { k: string; v: string }) {
   return (
     <div className="rounded-lg border bg-muted/40 px-3 py-2.5">
       <span className="block text-xs text-muted-foreground">{k}</span>
-      <b className="font-mono text-lg font-semibold tabular-nums">{v}</b>
+      <b className="font-heading tabular-nums text-lg font-semibold">{v}</b>
     </div>
   )
 }
@@ -941,10 +942,10 @@ export function MetasView({
         <>
           <p className="mx-1 mb-4 flex flex-wrap gap-x-4 text-sm text-muted-foreground">
             <span>
-              Ahorrado en metas <b className="font-mono text-foreground">{eur(totA)}</b>
+              Ahorrado en metas <b className="font-heading tabular-nums text-foreground">{eur(totA)}</b>
             </span>
             <span>
-              de <b className="font-mono text-foreground">{eur(totO)}</b>
+              de <b className="font-heading tabular-nums text-foreground">{eur(totO)}</b>
             </span>
           </p>
           <div className="grid gap-4 md:grid-cols-2">
@@ -957,10 +958,10 @@ export function MetasView({
                 <Card key={g.id}>
                   <CardHeader>
                     <CardTitle className="text-lg">{g.n}</CardTitle>
-                    <CardAction className="font-mono text-sm font-semibold">{pct(p)}</CardAction>
+                    <CardAction className="font-heading tabular-nums text-sm font-semibold">{pct(p)}</CardAction>
                   </CardHeader>
                   <CardContent className="grid gap-2">
-                    <p className="font-mono font-semibold">
+                    <p className="font-heading tabular-nums font-semibold">
                       {eur(g.ah)} <span className="font-normal text-muted-foreground">de {eur(g.obj)}</span>
                     </p>
                     <Progress value={Math.min(100, p * 100)} aria-label={`${pct(p)} conseguido`} className="[&_[data-slot=progress-track]]:h-2.5" />
@@ -969,7 +970,7 @@ export function MetasView({
                       {!done && g.fecha ? (
                         ml > 0 ? (
                           <span>
-                            Aparta <b className="font-mono text-foreground">{eur(Math.ceil(falta / ml))}</b> al mes durante {ml}{" "}
+                            Aparta <b className="font-heading tabular-nums text-foreground">{eur(Math.ceil(falta / ml))}</b> al mes durante {ml}{" "}
                             {ml === 1 ? "mes" : "meses"} (hasta {monthLabel(g.fecha)})
                           </span>
                         ) : (
@@ -1053,7 +1054,11 @@ export function AjustesView({
           className="w-auto"
         />
       ) : null}
-      {c.id === "otros-g" || c.id === "otros-i" ? null : (
+      {c.id === "otros-g" || c.id === "otros-i" ? (
+        <span className="w-[74px] text-center text-xs text-muted-foreground" title="Esta categoría no se puede borrar">
+          Fija
+        </span>
+      ) : (
         <Button size="sm" variant="destructive" onClick={() => onDeleteCat(c)} aria-label={`Eliminar ${c.n}`}>
           Eliminar
         </Button>
@@ -1111,7 +1116,7 @@ export function AjustesView({
                           </span>
                         </span>
                       </Label>
-                      <span className="font-mono text-sm font-semibold">
+                      <span className="font-heading tabular-nums text-sm font-semibold">
                         {r.t === "i" ? "+" : MINUS}
                         {eur(r.c)}
                       </span>

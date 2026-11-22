@@ -184,7 +184,7 @@ function Jornadas({
                     aria-label={label}
                     onClick={() => onDay(d, t?.shifts[0] || null)}
                     className={cn(
-                      "relative grid aspect-square min-h-11 content-center justify-items-center rounded-xl text-sm transition-transform active:scale-95",
+                      "relative grid aspect-square min-h-11 content-center justify-items-center rounded-xl text-sm transition-transform active:scale-95 sm:aspect-auto sm:h-14",
                       !t && "bg-muted/60 text-muted-foreground",
                       off && "bg-glow/15 text-foreground ring-1 ring-glow/40",
                       d === today && "ring-2 ring-primary"

@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   ArrowDownLeftIcon,
   ArrowUpRightIcon,
+  BugIcon,
   ChartPieIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -11,7 +12,12 @@ import {
   EllipsisIcon,
   FileTextIcon,
   HouseIcon,
+  ListIcon,
+  PiggyBankIcon,
   PlusIcon,
+  SlidersHorizontalIcon,
+  SparklesIcon,
+  TargetIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -662,19 +668,24 @@ export function FinanzasApp() {
       <Splash />
       <OrbiTour open={tour} onClose={() => setTour(false)} />
       {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour} /> : null}
-      <div className="mx-auto max-w-[1080px] px-4 pb-52">
-        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl">
+      <SideNav view={view} onGo={(v) => go(v)} onAdd={() => loaded && open({ kind: "add" })} />
+      <div className="lg:pl-[260px]">
+      <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
+        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
           <div className="flex h-11 items-center justify-between gap-3">
             {view === "inicio" ? (
-              <OrbeWordmark />
+              <>
+                <OrbeWordmark className="lg:hidden" />
+                <h1 className="hidden font-heading text-2xl font-semibold tracking-tight lg:block">Inicio</h1>
+              </>
             ) : (
               <div className="flex min-w-0 items-center gap-1">
                 {parent ? (
-                  <Button variant="ghost" size="icon" className="-ml-2 rounded-full" aria-label="Volver" onClick={() => go(parent)}>
+                  <Button variant="ghost" size="icon" className="-ml-2 rounded-full lg:hidden" aria-label="Volver" onClick={() => go(parent)}>
                     <ChevronLeftIcon className="size-5" />
                   </Button>
                 ) : null}
-                <h1 className="truncate font-heading text-xl font-semibold tracking-tight">{TITLES[view]}</h1>
+                <h1 className="truncate font-heading text-xl font-semibold tracking-tight lg:text-2xl">{TITLES[view]}</h1>
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -845,6 +856,7 @@ export function FinanzasApp() {
         ) : null}
         {sheet?.kind === "text" ? <TextDialog key={sheetKey} open title={sheet.title} text={sheet.text} onClose={close} /> : null}
       </div>
+      </div>
     </>
   )
 }
@@ -869,7 +881,7 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
   return (
     <nav
       aria-label="Secciones"
-      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t bg-card/95 px-2 pt-1.5 backdrop-blur-xl md:inset-x-auto md:bottom-4 md:left-1/2 md:w-[480px] md:-translate-x-1/2 md:rounded-3xl md:border md:p-2 md:shadow-xl"
+      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t bg-card/95 px-2 pt-1.5 backdrop-blur-xl md:px-[max(0.5rem,calc(50vw-280px))] lg:hidden"
     >
       {item("inicio", "Inicio", HouseIcon)}
       {item("resumen", "Análisis", ChartPieIcon)}
@@ -889,6 +901,58 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
       {item("trabajo", "Trabajo", ClockIcon)}
       {item("mas", "Más", EllipsisIcon)}
     </nav>
+  )
+}
+
+const SIDE: { v: View; label: string; Icon: React.ComponentType<{ className?: string }>; tour?: string }[] = [
+  { v: "inicio", label: "Inicio", Icon: HouseIcon, tour: "nav-inicio" },
+  { v: "resumen", label: "Análisis", Icon: ChartPieIcon, tour: "nav-resumen" },
+  { v: "movimientos", label: "Movimientos", Icon: ListIcon },
+  { v: "trabajo", label: "Trabajo", Icon: ClockIcon, tour: "nav-trabajo" },
+  { v: "nominas", label: "Nóminas", Icon: FileTextIcon },
+  { v: "hormiga", label: "Gastos hormiga", Icon: BugIcon },
+  { v: "presupuesto", label: "Presupuestos", Icon: TargetIcon },
+  { v: "metas", label: "Ahorro y metas", Icon: PiggyBankIcon },
+]
+
+/** Navegación lateral de escritorio (desde 1024 px). */
+function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; onAdd: () => void }) {
+  const link = (v: View, label: string, Icon: React.ComponentType<{ className?: string }>, tour?: string) => (
+    <button
+      key={v}
+      type="button"
+      data-tour={tour}
+      aria-current={view === v ? "page" : undefined}
+      onClick={() => onGo(v)}
+      className={cn(
+        "flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        view === v && "bg-hero text-hero-foreground hover:bg-hero hover:text-hero-foreground"
+      )}
+    >
+      <Icon className={cn("size-[18px]", view === v && "text-glow")} />
+      {label}
+    </button>
+  )
+  return (
+    <aside
+      aria-label="Secciones"
+      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/70 px-4 pt-6 pb-5 backdrop-blur-xl lg:flex"
+    >
+      <div className="px-2">
+        <OrbeWordmark />
+      </div>
+      <Button data-tour="nav-add" onClick={onAdd} className="h-11 justify-start gap-2.5 rounded-2xl bg-hero px-4 text-[15px] text-hero-foreground hover:bg-hero/90">
+        <span className="grid size-6 place-items-center rounded-full ring-2 ring-glow/70">
+          <PlusIcon className="size-4 text-glow" strokeWidth={2.6} />
+        </span>
+        Añadir
+      </Button>
+      <nav className="grid gap-1">{SIDE.map((x) => link(x.v, x.label, x.Icon, x.tour))}</nav>
+      <div className="mt-auto grid gap-1 border-t pt-4">
+        {link("mas", "Orbi e instalar", SparklesIcon, "nav-mas")}
+        {link("ajustes", "Ajustes y copias", SlidersHorizontalIcon)}
+      </div>
+    </aside>
   )
 }
 
