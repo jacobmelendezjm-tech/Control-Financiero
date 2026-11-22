@@ -31,6 +31,7 @@ import { HomeView } from "@/components/finanzas/home-view"
 import { HormigaView } from "@/components/finanzas/hormiga-view"
 import { OrbeWordmark } from "@/components/finanzas/logo"
 import { MoreView } from "@/components/finanzas/more-view"
+import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
 import { WorkView } from "@/components/finanzas/work-view"
@@ -44,6 +45,7 @@ import {
   type Filters,
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
+import { orbiSay, pick } from "@/lib/orbi"
 import { usePwa } from "@/hooks/use-pwa"
 import {
   CUR,
@@ -52,7 +54,9 @@ import {
   catMap,
   daysIn,
   eur,
+  hormigaStats,
   importCSVRows,
+  isHormiga,
   loadAll,
   monthLabel,
   pad,
@@ -179,6 +183,37 @@ export function FinanzasApp() {
   const [sheet, setSheet] = React.useState<Sheet>(null)
   const [sheetKey, setSheetKey] = React.useState(0)
   const [last, setLast] = React.useState<{ type: TxType; cat: Partial<Record<TxType, string>> }>({ type: "g", cat: {} })
+  const [tour, setTour] = React.useState(false)
+  const [buddyOn, setBuddyOn] = React.useState(true)
+
+  /* Orbi: preferencia de mostrarlo y tutorial la primera vez. */
+  React.useEffect(() => {
+    let done = true
+    try {
+      done = localStorage.getItem("orbe.tour") === "done"
+      // Preferencia guardada en este dispositivo.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBuddyOn(localStorage.getItem("orbe.buddy") !== "off")
+    } catch {}
+    if (done) return
+    const t = setTimeout(() => {
+      if (location.hash && location.hash !== "#inicio") location.hash = "inicio"
+      setTour(true)
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [])
+  const toggleBuddy = (on: boolean) => {
+    setBuddyOn(on)
+    try {
+      localStorage.setItem("orbe.buddy", on ? "on" : "off")
+    } catch {}
+  }
+  const startTour = () => {
+    setView("inicio")
+    if (location.hash !== "#inicio") location.hash = "inicio"
+    window.scrollTo(0, 0)
+    setTimeout(() => setTour(true), 250)
+  }
 
   const open = (s: NonNullable<Sheet>) => {
     setSheetKey((k) => k + 1)
@@ -239,7 +274,17 @@ export function FinanzasApp() {
     })
     setLast((l) => ({ type: tx.t, cat: { ...l.cat, [tx.t]: tx.cat } }))
     close()
-    toast.success(ym(tx.d) === CUR() || ym(tx.d) === month ? "Guardado" : `Guardado en ${monthLabel(ym(tx.d))}`)
+    const where = ym(tx.d) === CUR() || ym(tx.d) === month ? "" : ` en ${monthLabel(ym(tx.d))}`
+    const isNew = !oldMonth
+    let said = false
+    if (isNew && tx.t === "i")
+      said = orbiSay(pick([`¡Dinero dentro! +${eur(tx.c)}${where} 💸`, `¡Eso es! ${eur(tx.c)} más en la cuenta.`, `+${eur(tx.c)}. Mi anillo brilla más que nunca ✨`]), "happy")
+    else if (isNew && isHormiga(tx, catMap(real.settings.cats), real.settings.hormigaMax)) {
+      const hs = hormigaStats({ ...real, months: { ...real.months, [ym(tx.d)]: [...(real.months[ym(tx.d)] || []), tx] } }, ym(tx.d))
+      said = orbiSay(`¡Una hormiga! 🐜 Este mes ya suman ${eur(hs.total)} en ${hs.count} gastitos.`, "wow")
+    } else if (isNew)
+      said = orbiSay(pick([`Apuntado${where}. ¡Así me gusta!`, `Gasto guardado${where}. Nada se me escapa 👀`, `Hecho${where}. Cuentas claras, ahorro feliz.`]), "idle")
+    if (!said) toast.success(where ? `Guardado${where}` : "Guardado")
   }
   const deleteTx = (tx: Tx) => {
     update((d) => {
@@ -255,7 +300,8 @@ export function FinanzasApp() {
     update((d) => {
       for (const r of rs) upsertTx(d, recTx(r, m), null)
     })
-    toast.success(rs.length === 1 ? `${rs[0].n} apuntado` : `${rs.length} fijos apuntados`)
+    const msg = rs.length === 1 ? `${rs[0].n} apuntado` : `${rs.length} fijos apuntados`
+    if (!orbiSay(`${msg}. Tus fijos, al día ✔`, "happy")) toast.success(msg)
   }
   const setBudget = (catId: string, raw: string) => {
     const v = raw.trim() ? parsePos(raw) : 0
@@ -299,7 +345,14 @@ export function FinanzasApp() {
       if (x) x.ah += sign * c
     })
     close()
-    toast.success(sign > 0 ? `Has apartado ${eur(c)}` : `Has retirado ${eur(c)}`)
+    const after = g.ah + sign * c
+    const said =
+      sign > 0
+        ? after >= g.obj && g.ah < g.obj
+          ? orbiSay(`¡Meta «${g.n}» conseguida! 🎉 Estoy dando vueltas de alegría.`, "wow")
+          : orbiSay(`+${eur(c)} para «${g.n}». Ya vas por el ${Math.round((after / g.obj) * 100)} %. ¡Sigue así!`, "happy")
+        : orbiSay(`Has retirado ${eur(c)} de «${g.n}». No pasa nada, a veces toca.`, "think")
+    if (!said) toast.success(sign > 0 ? `Has apartado ${eur(c)}` : `Has retirado ${eur(c)}`)
   }
 
   /* ---------- fijos y categorías ---------- */
@@ -486,6 +539,7 @@ export function FinanzasApp() {
     toast.success(`Jornada de hoy registrada · ${fmtMin(shiftMinutes(s))}`, {
       action: { label: "Editar", onClick: () => open({ kind: "shift", shift: s, date: s.d }) },
     })
+    orbiSay(pick(["¡Jornada fichada! Hoy también cuenta 💪", "Fichado. Yo llevo la cuenta de tus horas.", "¡Hecho! Otra jornada a la saca."]), "happy")
   }
   const openDay = (date: string, s: Shift | null) => {
     if (s && guardDemo()) return
@@ -546,7 +600,9 @@ export function FinanzasApp() {
       else d.payslips.push(p)
     })
     close()
-    toast.success(asIncome ? "Nómina guardada y apuntada como ingreso" : "Nómina guardada")
+    const rate = p.bruto && p.irpf ? ` Te retienen un ${Math.round((p.irpf / p.bruto) * 1000) / 10} % de IRPF.` : ""
+    if (!orbiSay(`¡Nómina guardada! ${eur(p.neto)} netos.${rate}`, "happy"))
+      toast.success(asIncome ? "Nómina guardada y apuntada como ingreso" : "Nómina guardada")
   }
   const deletePayslip = (p: Payslip) => {
     update((d) => {
@@ -603,7 +659,9 @@ export function FinanzasApp() {
   return (
     <>
       <Splash />
-      <div className="mx-auto max-w-[1080px] px-4 pb-36">
+      <OrbiTour open={tour} onClose={() => setTour(false)} />
+      {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour} /> : null}
+      <div className="mx-auto max-w-[1080px] px-4 pb-52">
         <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl">
           <div className="flex h-11 items-center justify-between gap-3">
             {view === "inicio" ? (
@@ -679,7 +737,15 @@ export function FinanzasApp() {
                   onEditPayslip={openPayslip}
                 />
               ) : view === "mas" ? (
-                <MoreView nombre={real.settings.nombre} pwa={pwa} onGo={(v) => go(v)} onNombre={setNombre} />
+                <MoreView
+                  nombre={real.settings.nombre}
+                  pwa={pwa}
+                  onGo={(v) => go(v)}
+                  onNombre={setNombre}
+                  buddyOn={buddyOn}
+                  onBuddy={toggleBuddy}
+                  onTour={startTour}
+                />
               ) : (
                 <AjustesView
                   data={real}
@@ -784,6 +850,7 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
   const item = (v: Tab, label: string, Icon: React.ComponentType<{ className?: string }>) => (
     <button
       type="button"
+      data-tour={`nav-${v}`}
       aria-current={tab === v ? "page" : undefined}
       onClick={() => onGo(v)}
       className={cn(
@@ -805,6 +872,7 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
       <div className="grid justify-items-center">
         <button
           type="button"
+          data-tour="nav-add"
           aria-label="Añadir"
           onClick={onAdd}
           className="-mt-7 grid size-15 place-items-center rounded-full bg-hero text-glow shadow-[0_10px_24px_-6px_rgb(13_138_158/0.7)] ring-4 ring-background transition-transform active:scale-95"

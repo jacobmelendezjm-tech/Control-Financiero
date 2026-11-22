@@ -247,3 +247,57 @@ export function Meter({
 
 export const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"]
 export const WEEKDAY_NAMES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+/** Decoración de marca: un orbe con un satélite girando en su órbita. */
+export function OrbitDeco({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 220 220" aria-hidden className={cn("pointer-events-none absolute -top-14 -right-16 size-60", className)}>
+      <defs>
+        <radialGradient id="orbit-planet" cx="0.35" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#7ff0f8" stopOpacity="0.55" />
+          <stop offset="0.5" stopColor="#12b2c1" stopOpacity="0.28" />
+          <stop offset="1" stopColor="#12b2c1" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="110" cy="110" r="46" fill="url(#orbit-planet)" />
+      <circle cx="110" cy="110" r="30" fill="none" stroke="#e5f9f8" strokeOpacity="0.18" />
+      <g transform="rotate(-24 110 110)">
+        <ellipse cx="110" cy="110" rx="96" ry="38" fill="none" stroke="#12b2c1" strokeOpacity="0.45" strokeWidth="1.5" />
+        <ellipse cx="110" cy="110" rx="72" ry="27" fill="none" stroke="#e5f9f8" strokeOpacity="0.14" />
+        <g transform="translate(110 110) scale(1 0.396)">
+          <g className="orbit-spin">
+            <circle cx="96" cy="0" r="9" fill="#12b2c1" opacity="0.35" />
+            <circle cx="96" cy="0" r="5" fill="#e5f9f8" />
+          </g>
+        </g>
+      </g>
+    </svg>
+  )
+}
+
+/** Anima un número desde 0 hasta su valor la primera vez que se muestra. */
+export function useCountUp(value: number, ms = 900) {
+  const [anim, setAnim] = React.useState<number | null>(() =>
+    typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : null
+  )
+  const target = React.useRef(value)
+  React.useEffect(() => {
+    target.current = value
+  }, [value])
+  React.useEffect(() => {
+    if (anim === null) return
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms)
+      if (p >= 1) return setAnim(null)
+      setAnim(Math.round(target.current * (1 - Math.pow(1 - p, 3))))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // Solo la primera vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return anim ?? value
+}

@@ -5,7 +5,7 @@ import { ClockIcon, FileTextIcon, PlusIcon, Settings2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Chip, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS } from "@/components/finanzas/kit"
+import { Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS } from "@/components/finanzas/kit"
 import { eur, eur0, monthLabel, monthShort, pct, todayStr, type FinanceData, type Payslip, type Shift } from "@/lib/finance"
 import {
   KIND_LABEL,
@@ -103,7 +103,7 @@ function Jornadas({
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
       <div className="grid min-w-0 gap-4">
         <section className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground">
-          <div aria-hidden className="absolute -top-14 -right-14 size-44 rounded-full border-[14px] border-glow/25" />
+          <OrbitDeco />
           <p className="relative text-[11px] font-semibold tracking-[0.16em] text-hero-foreground/70 uppercase">
             Horas en {monthLabel(month)}
           </p>
@@ -284,7 +284,7 @@ function Nominas({
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <div className="grid min-w-0 gap-4">
         <section className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground">
-          <div aria-hidden className="absolute -top-14 -right-14 size-44 rounded-full border-[14px] border-glow/25" />
+          <OrbitDeco />
           <p className="relative text-[11px] font-semibold tracking-[0.16em] text-hero-foreground/70 uppercase">Neto cobrado en {year}</p>
           <p className="relative mt-1 font-heading text-5xl font-semibold tracking-tight tabular-nums">{eur0(y.neto)}</p>
           <div className="relative mt-3 flex flex-wrap gap-2">

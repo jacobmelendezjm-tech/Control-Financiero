@@ -6,7 +6,7 @@ import { BugIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { CatIcon, Chip, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS, WEEKDAY_NAMES } from "@/components/finanzas/kit"
+import { CatIcon, Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS, WEEKDAY_NAMES } from "@/components/finanzas/kit"
 import { MINUS, catMap, eur, eur0, fmtPlain, hormigaStats, monthLabel, pct, type FinanceData, type Tx } from "@/lib/finance"
 import { dayTotals, monthDays, summarize } from "@/lib/work"
 
@@ -39,7 +39,7 @@ export function HormigaView({
     <div className="view-in grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <div className="grid min-w-0 gap-4">
         <section className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground">
-          <div aria-hidden className="absolute -top-14 -right-14 size-44 rounded-full border-[14px] border-glow/25" />
+          <OrbitDeco />
           <p className="relative flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.16em] text-hero-foreground/70 uppercase">
             <BugIcon className="size-3.5" /> Gastos hormiga · {monthLabel(month)}
           </p>

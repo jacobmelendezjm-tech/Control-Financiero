@@ -16,7 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CatIcon, Chip, Eyebrow, Meter, MiniBars, SectionTitle, WEEKDAYS, WEEKDAY_NAMES } from "@/components/finanzas/kit"
+import { CatIcon, Chip, Eyebrow, Meter, MiniBars, OrbitDeco, SectionTitle, WEEKDAYS, WEEKDAY_NAMES, useCountUp } from "@/components/finanzas/kit"
 import {
   CUR,
   MINUS,
@@ -109,6 +109,7 @@ export function HomeView({
   const saved = data.goals.reduce((a, g) => a + Math.max(0, g.ah), 0)
   const lastPs = [...data.payslips].sort((a, b) => b.m.localeCompare(a.m))[0]
 
+  const shownTotal = useCountUp(total)
   const tip = buildTip({ hs, st, vsPrev, mo, lastPsNeto: lastPs?.neto, rate: st.rate })
 
   return (
@@ -123,11 +124,11 @@ export function HomeView({
 
         {/* Tarjeta principal */}
         <section
+          data-tour="saldo"
           aria-label="Saldo"
           className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground shadow-[0_20px_40px_-20px_rgb(13_138_158/0.6)]"
         >
-          <div aria-hidden className="absolute -top-16 -right-16 size-52 rounded-full border-[18px] border-glow/30 blur-[1px]" />
-          <div aria-hidden className="absolute -top-10 -right-10 size-40 rounded-full border border-white/10" />
+          <OrbitDeco />
           <div className="relative flex items-start justify-between gap-3">
             <p className="text-[11px] font-semibold tracking-[0.16em] text-hero-foreground/70 uppercase">Saldo total</p>
             {txs.length ? (
@@ -138,13 +139,13 @@ export function HomeView({
             ) : null}
           </div>
           <p className="relative mt-2 font-heading text-[clamp(2.4rem,11vw,3.4rem)] leading-none font-semibold tracking-tight tabular-nums">
-            {eurM(total)}
+            {eurM(shownTotal)}
           </p>
           <p className="relative mt-2 text-sm text-hero-foreground/75">
             Entran {eur0(st.inc)} · salen {eur0(st.exp)}
             {st.rate != null && st.inc > 0 ? ` · ahorras ${pct(Math.max(0, st.rate))}` : ""}
           </p>
-          <div className="relative mt-5 grid grid-cols-2 gap-2.5">
+          <div data-tour="botones" className="relative mt-5 grid grid-cols-2 gap-2.5">
             <Button
               onClick={() => onNewTx("i")}
               className="h-12 rounded-2xl bg-gold text-[15px] font-semibold text-[#1f2b2d] hover:bg-gold/90"
@@ -164,7 +165,7 @@ export function HomeView({
         </section>
 
         {/* Accesos rápidos */}
-        <nav aria-label="Accesos rápidos" className="grid grid-cols-4 gap-2">
+        <nav data-tour="accesos" aria-label="Accesos rápidos" className="grid grid-cols-4 gap-2">
           {(
             [
               ["Fichar", ClockIcon, clockedToday ? () => onGo("trabajo") : onClock, true],
@@ -193,7 +194,7 @@ export function HomeView({
         </nav>
 
         {/* Gasto de la semana */}
-        <Card>
+        <Card data-tour="gasto7">
           <CardContent className="grid gap-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -252,7 +253,7 @@ export function HomeView({
 
       <div className="grid min-w-0 gap-4">
         {/* Trabajo */}
-        <Card>
+        <Card data-tour="trabajo">
           <CardContent className="grid gap-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -279,6 +280,7 @@ export function HomeView({
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
+            data-tour="hormiga"
             onClick={() => onGo("hormiga")}
             className="grid gap-1 rounded-3xl bg-card p-4 text-left ring-1 ring-foreground/8 active:scale-[0.98]"
           >

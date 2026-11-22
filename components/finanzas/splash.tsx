@@ -26,7 +26,6 @@ export function Splash() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     if (seen) {
       // Ya se vio en esta sesión: no repetir al recargar.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase("gone")
       return
     }

@@ -22,6 +22,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { OrbeMark } from "@/components/finanzas/logo"
+import { Orbi } from "@/components/finanzas/orbi"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { Eyebrow } from "@/components/finanzas/kit"
 
 export type MoreGo = "movimientos" | "resumen" | "presupuesto" | "metas" | "hormiga" | "nominas" | "ajustes"
@@ -40,11 +43,17 @@ export function MoreView({
   pwa,
   onGo,
   onNombre,
+  buddyOn,
+  onBuddy,
+  onTour,
 }: {
   nombre: string
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
   onGo: (v: MoreGo) => void
   onNombre: (n: string) => void
+  buddyOn: boolean
+  onBuddy: (on: boolean) => void
+  onTour: () => void
 }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [name, setName] = React.useState(nombre)
@@ -73,6 +82,26 @@ export function MoreView({
       </div>
 
       <div className="grid min-w-0 gap-4">
+        <section className="relative overflow-hidden rounded-[28px] bg-card p-5 ring-1 ring-foreground/8">
+          <div aria-hidden className="absolute -right-6 -bottom-8 size-40 rounded-full bg-glow/15 blur-2xl" />
+          <div className="relative flex items-center gap-4">
+            <Orbi mood="wave" className="w-20 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-heading text-lg font-semibold">Orbi, tu copiloto</p>
+              <p className="text-sm text-muted-foreground">Te guía, te da consejos y celebra tus logros.</p>
+            </div>
+          </div>
+          <div className="relative mt-4 grid gap-3">
+            <Button onClick={onTour} className="h-11 rounded-2xl">
+              Ver el tutorial otra vez
+            </Button>
+            <Label className="flex items-center gap-2.5 font-normal">
+              <Checkbox checked={buddyOn} onCheckedChange={(v) => onBuddy(!!v)} />
+              Mostrar a Orbi flotando en la app
+            </Label>
+          </div>
+        </section>
+
         {!pwa.installed ? (
           <section className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground">
             <div className="flex items-center gap-3">
