@@ -369,11 +369,25 @@ export function useCloud(store: FinanceStore) {
     }
   }, [user, sync])
 
+  /* ---------- el nombre de la cuenta sigue al del perfil (lo usan los correos) ---------- */
+  const nombre = store.real.settings.nombre
+  React.useEffect(() => {
+    const sb = getSupabase()
+    if (!sb || !user || !nombre || user.user_metadata?.nombre === nombre) return
+    const t = setTimeout(() => void sb.auth.updateUser({ data: { nombre } }), 2000)
+    return () => clearTimeout(t)
+  }, [user, nombre])
+
   /* ---------- acciones ---------- */
   const sendCode = async (email: string) => {
     const sb = getSupabase()
     if (!sb) return "La nube no está configurada."
-    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin } })
+    // El nombre viaja con el alta para que el correo de bienvenida salude por el nombre.
+    const nombre = storeRef.current.real.settings.nombre || undefined
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin, ...(nombre ? { data: { nombre } } : {}) },
+    })
     if (!error) return null
     if (error.status === 429) return "Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo."
     return "No se ha podido enviar el correo. Revisa la dirección e inténtalo de nuevo."

@@ -1,0 +1,88 @@
+<!--
+  Orbe · Correo de bienvenida (Supabase → Authentication → Emails → Confirm signup)
+  Asunto: ¡Bienvenido a Orbe! Tu código: {{ .Token }}
+  Variables: {{ .Token }} {{ .ConfirmationURL }} {{ .Email }} {{ .Data.nombre }}
+-->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Bienvenido a Orbe</title>
+</head>
+<body style="margin:0;padding:0;background:#e9f6f6;font-family:Arial,Helvetica,sans-serif;color:#1f2b2d">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">¡Bienvenido a Orbe! Tu código es {{ .Token }}.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#e9f6f6">
+  <tr><td align="center" style="padding:28px 14px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px">
+
+      <!-- Cabecera -->
+      <tr><td style="background:#1f2b2d;background-image:linear-gradient(145deg,#23717b 0%,#1f2b2d 80%);border-radius:24px 24px 0 0;padding:22px 26px">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:middle"><img src="https://moneycare-five.vercel.app/email/logo.png" width="40" height="40" alt="Orbe" style="display:block;border-radius:11px"></td>
+          <td style="vertical-align:middle;padding-left:12px">
+            <div style="font-size:20px;font-weight:bold;color:#e5f9f8;letter-spacing:-0.3px">Orbe</div>
+            <div style="font-size:10px;letter-spacing:2px;color:#9fdde3;text-transform:uppercase">control financiero</div>
+          </td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Cuerpo -->
+      <tr><td style="background:#ffffff;padding:26px 26px 8px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:top">
+            <h1 style="margin:0 0 6px;font-size:24px;line-height:1.25;color:#1f2b2d">{{ if .Data.nombre }}¡Bienvenido, {{ .Data.nombre }}!{{ else }}¡Bienvenido a Orbe!{{ end }}</h1>
+            <p style="margin:0;font-size:15px;line-height:1.5;color:#4f6a6b">Soy Orbi, tu copiloto financiero. Con tu cuenta, tus datos quedan a salvo y los tienes en todos tus dispositivos:</p>
+          </td>
+          <td width="96" style="vertical-align:bottom;padding-left:8px"><img src="https://moneycare-five.vercel.app/email/orbi.png" width="88" alt="Orbi saludando" style="display:block"></td>
+        </tr></table>
+      </td></tr>
+
+      <!-- Ventajas -->
+      <tr><td style="background:#ffffff;padding:4px 26px 6px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:#1f2b2d">
+          <tr><td style="padding:5px 0">☁️&nbsp; Copia en la nube: no pierdes nada si cambias de móvil</td></tr>
+          <tr><td style="padding:5px 0">📱&nbsp; Móvil y ordenador sincronizados al momento</td></tr>
+          <tr><td style="padding:5px 0">🔒&nbsp; Solo tú puedes ver tus datos</td></tr>
+        </table>
+      </td></tr>
+
+      <!-- Código -->
+      <tr><td style="background:#ffffff;padding:14px 26px 6px">
+        <div style="background:#e5f9f8;border:2px solid #12b2c1;border-radius:18px;padding:18px 10px;text-align:center">
+          <div style="font-size:11px;letter-spacing:2px;color:#0d8a9e;text-transform:uppercase;font-weight:bold">Tu código</div>
+          <div style="font-size:36px;line-height:1.2;font-weight:bold;letter-spacing:8px;color:#1f2b2d;font-family:'Courier New',Courier,monospace;padding-top:6px">{{ .Token }}</div>
+        </div>
+        <p style="margin:10px 0 0;font-size:12px;color:#6b8586;text-align:center">Escríbelo en la app. Caduca en una hora y solo sirve una vez.</p>
+      </td></tr>
+
+      <!-- Botón -->
+      <tr><td style="background:#ffffff;padding:18px 26px 8px" align="center">
+        <p style="margin:0 0 10px;font-size:13px;color:#4f6a6b">¿Estás en el mismo dispositivo? Entra con un toque:</p>
+        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#f2b84b;color:#1f2b2d;font-weight:bold;font-size:15px;text-decoration:none;padding:13px 28px;border-radius:999px">Entrar en Orbe</a>
+      </td></tr>
+
+      <!-- Consejo -->
+      <tr><td style="background:#ffffff;padding:20px 26px 24px">
+        <div style="background:#1f2b2d;border-radius:16px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:bold;color:#f2b84b;letter-spacing:1px;text-transform:uppercase">💡 Consejo de Orbi</div>
+          <div style="font-size:14px;line-height:1.45;color:#e5f9f8;padding-top:4px;font-style:italic">Empieza por apuntar tu nómina y tu último café. En una semana sabrás en qué se te va el dinero.</div>
+        </div>
+      </td></tr>
+
+      <!-- Pie -->
+      <tr><td style="background:#f4fbfb;border-radius:0 0 24px 24px;padding:16px 26px 20px">
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b8586">Has recibido este correo porque alguien creó una cuenta de Orbe con <b>{{ .Email }}</b>. Si no has sido tú, ignóralo: nadie podrá entrar sin este código.</p>
+        <p style="margin:10px 0 0;font-size:12px;color:#6b8586">
+          <a href="https://moneycare-five.vercel.app" style="color:#0d8a9e">Abrir Orbe</a> ·
+          <a href="https://moneycare-five.vercel.app/privacidad" style="color:#0d8a9e">Privacidad</a> ·
+          <a href="mailto:soporte.moneycare.orbe@gmail.com" style="color:#0d8a9e">Ayuda</a>
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
