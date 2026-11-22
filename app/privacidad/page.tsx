@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Qué datos guarda Orbe, dónde y cómo borrarlos.",
 }
 
-const CONTACTO = process.env.NEXT_PUBLIC_CONTACT_EMAIL
+const CONTACTO = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "soporte.moneycare.orbe@gmail.com"
 
 export default function Privacidad() {
   return (
