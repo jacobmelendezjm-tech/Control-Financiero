@@ -185,7 +185,7 @@ export function Onboarding({
                   : { mood: "wave", say: name ? `¡Encantado, ${name}!` : "¡Todo listo!" }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" role="presentation">
+    <div className="fixed inset-x-0 top-[var(--vvt,0px)] z-[80] flex h-[var(--vvh,100dvh)] items-end justify-center transition-[top,height] duration-200 sm:items-center" role="presentation">
       <div aria-hidden className="absolute inset-0 animate-in bg-[rgb(6_14_16/0.45)] backdrop-blur-[2px] duration-300 fade-in" onClick={onLater} />
       <div
         ref={panelRef}
@@ -196,14 +196,14 @@ export function Onboarding({
         className="relative w-full animate-in duration-500 ease-out slide-in-from-bottom-10 fade-in sm:max-w-[440px]"
       >
         {/* Orbi asomando por encima de la hoja */}
-        <div className="pointer-events-none absolute -top-[92px] left-5 flex items-end gap-2">
+        <div className="pointer-events-none absolute -top-[92px] left-5 flex items-end gap-2 [html.kb-open_&]:hidden">
           <Orbi mood={orbi.mood} className="w-[74px] drop-shadow-[0_10px_18px_rgb(18_178_193/0.45)]" />
           <span key={step} className="orbi-pop mb-14 rounded-2xl rounded-bl-sm bg-card px-3 py-1.5 text-[13px] font-medium shadow-lg ring-1 ring-glow/35">
             {orbi.say}
           </span>
         </div>
 
-        <div className="pb-safe max-h-[82svh] overflow-y-auto rounded-t-[28px] bg-card px-5 pt-5 shadow-[0_-20px_60px_-20px_rgb(6_14_16/0.5)] ring-1 ring-glow/25 sm:rounded-[28px] sm:pb-5">
+        <div className="pb-safe max-h-[calc(var(--vvh,100dvh)-110px)] overflow-y-auto overscroll-contain rounded-t-[28px] [html.kb-open_&]:max-h-[calc(var(--vvh,100dvh)-12px)] bg-card px-5 pt-5 shadow-[0_-20px_60px_-20px_rgb(6_14_16/0.5)] ring-1 ring-glow/25 sm:rounded-[28px] sm:pb-5">
           <div className="mb-4 flex items-center gap-3">
             {qIdx >= 0 ? (
               <div className="flex flex-1 gap-1" aria-label={`Pregunta ${qIdx + 1} de ${questions.length}`}>

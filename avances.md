@@ -86,6 +86,10 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Esqueletos de carga y spinners.
 - Documentación completa del proyecto (este archivo, `memory.md`, `Mejoras_Futuro.md`, `README.md`).
 
+### Teclado del móvil
+
+- Al escribir en el móvil, el teclado tapaba los campos. Ahora los diálogos y la hoja de bienvenida se colocan en la zona visible encima del teclado (`components/keyboard-aware.tsx`, `visualViewport`), el campo activo se centra solo y en Android la página encoge con el teclado (`interactiveWidget: resizes-content`).
+
 ---
 
 ## Plantilla para nuevas entradas

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Instrument_Serif, Inter, Sora } from "next/font/google"
 
 import "./globals.css"
+import { KeyboardAware } from "@/components/keyboard-aware"
 import { SmoothScroll } from "@/components/smooth-scroll"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
@@ -24,6 +25,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android: con el teclado abierto la página encoge en vez de quedar tapada.
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#e9f6f6" },
     { media: "(prefers-color-scheme: dark)", color: "#172123" },
@@ -43,6 +46,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
+          <KeyboardAware />
           <SmoothScroll>{children}</SmoothScroll>
           <Toaster position="top-center" />
         </ThemeProvider>
