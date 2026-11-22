@@ -1,0 +1,100 @@
+# Orbe · Registro de avances
+
+Diario del proyecto: qué se hizo cada día, qué entró nuevo en la app y por qué. Sirve para recordar cuándo se implementó cada cosa y para contar cómo ha evolucionado Orbe.
+
+- **Fuentes**: el historial de git (`git log`), `memory.md` y las sesiones de trabajo. Lo anterior al 18 de noviembre de 2026 no tiene registro.
+- **Otros documentos**: estado técnico en `memory.md`; ideas y próximos pasos en `Mejoras_Futuro.md`.
+- **Cómo mantenerlo**: al acabar cada sesión, añadir una entrada al final con la misma estructura (ver plantilla abajo).
+
+---
+
+## Línea de tiempo
+
+| Fecha | Hito |
+|---|---|
+| 18 nov 2026 | «Mis Finanzas»: primera versión en un solo archivo HTML |
+| 19 nov 2026 | Reconstruida en Next.js con shadcn/ui |
+| 22 nov 2026 | Nace **Orbe**: rediseño, logo, apertura, trabajo y nóminas, gastos hormiga, Orbi, bienvenida, horario por turnos, nube con Supabase, base de datos relacional, correos propios y documentación |
+
+### Orbe en cifras (22 nov 2026)
+
+| | |
+|---|---|
+| Pantallas | 10 secciones (Inicio, Análisis, Movimientos, Presupuestos, Ahorro y metas, Gastos hormiga, Trabajo, Nóminas, Más, Ajustes) + Privacidad |
+| Tablas en la base de datos | 11 (+ 3 vistas de análisis) |
+| Pasos del tutorial de Orbi | 12 |
+| Preguntas de la bienvenida | hasta 6 (todas opcionales) |
+| Código | ~10.500 líneas de TypeScript |
+| Commits | 20 |
+| Comprobaciones de la base de datos | 29 (PGlite, imitando Supabase) |
+
+---
+
+## 18 de noviembre de 2026 · «Mis Finanzas» · `0d08746`
+
+Primera versión: una página HTML autónoma (`public/mis-finanzas.html`) con ingresos, gastos, presupuesto, metas y ajustes, guardando en el navegador.
+
+## 19 de noviembre de 2026 · A Next.js · `6cc9da6`, `41f62ca`
+
+- Proyecto Next.js con shadcn/ui.
+- La app se reconstruye con componentes: resumen (ticket del mes, fijos pendientes, regla 50/30/20, gasto por categoría, gráfico de 6 meses), movimientos con filtros, presupuesto, metas y ajustes (categorías, fijos, CSV/JSON, borrar datos). Misma clave de almacenamiento que la versión HTML: no se pierde nada.
+
+## 22 de noviembre de 2026 · Nace Orbe
+
+Un día de trabajo largo: de una app de gastos a una app de finanzas completa, con cuenta en la nube.
+
+### Rediseño, trabajo y nóminas · `de8cb79`
+
+- Paleta del usuario (turquesas) con referencia visual «Finora Finance»: tarjeta de saldo, accesos rápidos, barras de 7 días, actividad reciente, navegación con botón central «+».
+- Nombre **Orbe** y logo (anillo luminoso con barras); apertura animada.
+- **Trabajo**: jornadas, calendario, semanas, horas extra, precio por hora.
+- **Nóminas**: bruto, IRPF, Seguridad Social y neto; resumen anual.
+- **Gastos hormiga**: detección, proyección anual y equivalencia en horas.
+- Instalable (PWA) y sin conexión. Publicada en GitHub.
+
+### Orbi · `4c97854`
+
+Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, consejos según la pantalla y reacciones a lo que haces. Órbita animada en las tarjetas y saldo con conteo.
+
+### Pulido como en IRONLOG · `4f442f1`, `1275e8e`, `05fb578`
+
+- Cambio de tema con círculo que se expande desde el botón.
+- Escritorio: barra lateral, sin títulos duplicados, importes con la tipografía buena, calendario a tamaño razonable.
+- Smooth scroll con Lenis.
+
+### Bienvenida y turnos · `6a94965`, `2f8267b`
+
+- Formulario de bienvenida no invasivo (hoja con Orbi): nombre, cobro, sueldo, jornada, saldo, objetivo y ahorro; aplica todo (recordatorio de nómina, meta, tarjeta de ahorro del mes).
+- Horario por turnos rotativos (ciclos de 1 a 4 semanas), pensado para el horario real del usuario.
+
+### Nube · `7f2cda1` … `6d1ba6a`
+
+- Cuenta opcional con Supabase: entrar con código por correo, sincronización, borrar cuenta, página de privacidad.
+- Publicada en Vercel (https://moneycare-five.vercel.app) por el usuario; correo con Brevo (`soporte.moneycare.orbe@gmail.com`).
+- Imágenes de perfil de Orbe para el correo de soporte.
+
+### Base de datos completa · `d7d9415`, `a296bb4`
+
+- Esquema relacional de 11 tablas con RLS, validaciones, borrado lógico, vistas de análisis y tiempo real.
+- Sincronización por filas (solo lo que cambia, mezcla sin conflictos por fila, migración automática del formato antiguo).
+- Correo de cada usuario en `profiles.email`.
+- Probado con PGlite: 29 comprobaciones.
+
+### Correos y esperas · `bc40adb`, `15af625`
+
+- Correos de inicio de sesión y bienvenida con diseño propio, Orbi y saludo por nombre.
+- Esqueletos de carga y spinners.
+- Documentación completa del proyecto (este archivo, `memory.md`, `Mejoras_Futuro.md`, `README.md`).
+
+---
+
+## Plantilla para nuevas entradas
+
+```
+## <día> de <mes> de <año> · <título corto>
+
+### <cambio> · `<commit>`
+
+- Qué se hizo y por qué, en lenguaje sencillo.
+- Qué queda pendiente (si algo).
+```
