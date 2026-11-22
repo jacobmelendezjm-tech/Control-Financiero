@@ -329,7 +329,7 @@ export function Onboarding({
                     <Input id="ob-fin" type="time" value={fin} onChange={(e) => setFin(e.target.value)} />
                   </Field>
                 </div>
-                <p className="text-xs text-muted-foreground">Contaré como extra lo que pase de esas horas. Lo puedes cambiar cuando quieras en Trabajo.</p>
+                <p className="text-xs text-muted-foreground">Contaré como extra lo que pase de esas horas. ¿Tus turnos cambian de una semana a otra? Configúralos después en Trabajo › Mi horario.</p>
               </>
             ) : null}
 

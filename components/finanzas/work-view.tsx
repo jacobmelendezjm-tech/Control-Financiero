@@ -1,15 +1,21 @@
 "use client"
 
 import * as React from "react"
-import { ClockIcon, FileTextIcon, PlusIcon, Settings2Icon } from "lucide-react"
+import { CalendarRangeIcon, ClockIcon, FileTextIcon, PlusIcon, Settings2Icon, WandSparklesIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS } from "@/components/finanzas/kit"
 import { eur, eur0, monthLabel, monthShort, pct, todayStr, type FinanceData, type Payslip, type Shift } from "@/lib/finance"
 import {
+  DAY_NAMES,
   KIND_LABEL,
   calendarGrid,
+  cycleWeekMinutes,
+  planFor,
+  planMinutes,
+  scheduleOn,
+  weekIndex,
   dayTotals,
   fmtH,
   fmtMin,
@@ -30,6 +36,8 @@ export function WorkView({
   onDay,
   onClock,
   onCfg,
+  onSchedule,
+  onFill,
   onNewPayslip,
   onEditPayslip,
 }: {
@@ -40,6 +48,8 @@ export function WorkView({
   onDay: (d: string, s: Shift | null) => void
   onClock: () => void
   onCfg: () => void
+  onSchedule: () => void
+  onFill: () => void
   onNewPayslip: () => void
   onEditPayslip: (p: Payslip) => void
 }) {
@@ -69,7 +79,7 @@ export function WorkView({
         ))}
       </div>
       {tab === "jornadas" ? (
-        <Jornadas data={data} month={month} onDay={onDay} onClock={onClock} onCfg={onCfg} />
+        <Jornadas data={data} month={month} onDay={onDay} onClock={onClock} onCfg={onCfg} onSchedule={onSchedule} onFill={onFill} />
       ) : (
         <Nominas data={data} month={month} onNew={onNewPayslip} onEdit={onEditPayslip} />
       )}
@@ -83,12 +93,16 @@ function Jornadas({
   onDay,
   onClock,
   onCfg,
+  onSchedule,
+  onFill,
 }: {
   data: FinanceData
   month: string
   onDay: (d: string, s: Shift | null) => void
   onClock: () => void
   onCfg: () => void
+  onSchedule: () => void
+  onFill: () => void
 }) {
   const { cfg } = data.work
   const map = dayTotals(data.work.shifts, cfg)
@@ -98,6 +112,15 @@ function Jornadas({
   const today = todayStr()
   const maxMin = Math.max(Math.round(cfg.horasDia * 60), ...Object.values(map).map((t) => t.min))
   const clockedToday = !!map[today]
+  const hasSchedule = scheduleOn(cfg)
+  const todayPlan = planFor(today, cfg)
+  const clockLabel = clockedToday
+    ? "Añadir otro turno hoy"
+    : todayPlan
+      ? `Fichar hoy · ${todayPlan.ini}–${todayPlan.fin}`
+      : todayPlan === null
+        ? "Hoy libre · apuntar turno"
+        : `Fichar hoy · ${cfg.ini}–${cfg.fin}`
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
@@ -119,7 +142,7 @@ function Jornadas({
               className="h-12 rounded-2xl bg-gold text-[15px] font-semibold text-[#1f2b2d] hover:bg-gold/90"
             >
               {clockedToday ? <PlusIcon className="size-5" /> : <ClockIcon className="size-5" />}
-              {clockedToday ? "Añadir otro turno hoy" : `Fichar hoy · ${cfg.ini}–${cfg.fin}`}
+              {clockLabel}
             </Button>
             <Button
               variant="outline"
@@ -170,13 +193,16 @@ function Jornadas({
               {cells.map((d, i) => {
                 if (!d) return <span key={i} />
                 const t = map[d]
+                const plan = !t && hasSchedule ? planFor(d, cfg) : null
                 const intensity = t?.min ? 0.18 + 0.62 * Math.min(1, t.min / maxMin) : 0
                 const off = t && !t.min && t.kinds.some((k) => k !== "trabajo")
                 const label = t
                   ? t.min
                     ? `${+d.slice(8)}: ${fmtMin(t.min)}${t.extra ? `, ${fmtMin(t.extra)} extra` : ""}`
                     : `${+d.slice(8)}: ${t.kinds.map((k) => KIND_LABEL[k]).join(", ")}`
-                  : `${+d.slice(8)}: sin registrar`
+                  : plan
+                    ? `${+d.slice(8)}: turno previsto de ${plan.ini} a ${plan.fin}`
+                    : `${+d.slice(8)}: sin registrar`
                 return (
                   <button
                     key={d}
@@ -186,6 +212,7 @@ function Jornadas({
                     className={cn(
                       "relative grid aspect-square min-h-11 content-center justify-items-center rounded-xl text-sm transition-transform active:scale-95 sm:aspect-auto sm:h-14",
                       !t && "bg-muted/60 text-muted-foreground",
+                      plan && "bg-transparent text-foreground ring-1 ring-primary/50 ring-dashed outline-dashed outline-1 -outline-offset-4 outline-primary/40",
                       off && "bg-glow/15 text-foreground ring-1 ring-glow/40",
                       d === today && "ring-2 ring-primary"
                     )}
@@ -199,14 +226,24 @@ function Jornadas({
                         intensity > 0 && intensity <= 0.55 && "text-foreground/70"
                       )}
                     >
-                      {t ? (t.min ? fmtH(t.min).replace(" h", "h") : KIND_LABEL[t.kinds[0]].slice(0, 3)) : ""}
+                      {t ? (t.min ? fmtH(t.min).replace(" h", "h") : KIND_LABEL[t.kinds[0]].slice(0, 3)) : plan ? fmtH(planMinutes(plan)).replace(" h", "h") : ""}
                     </span>
                     {t?.extra ? <i aria-hidden className="absolute top-1 right-1 size-1.5 rounded-full bg-gold" /> : null}
                   </button>
                 )
               })}
             </div>
-            <p className="text-xs text-muted-foreground">Toca un día para registrar o editar la jornada.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Toca un día para registrar o editar la jornada.
+                {hasSchedule ? " Los días con borde discontinuo son turnos previstos." : ""}
+              </p>
+              {hasSchedule ? (
+                <Button size="sm" variant="outline" className="rounded-full" onClick={onFill}>
+                  <WandSparklesIcon /> Rellenar con mi horario
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -223,6 +260,7 @@ function Jornadas({
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-sm font-medium">
                         {+w.start.slice(8)} {monthShort(w.start.slice(0, 7))} – {+w.end.slice(8)} {monthShort(w.end.slice(0, 7))}
+                        {w.cycle ? <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">Semana {w.cycle}</span> : null}
                       </span>
                       <span className="font-heading text-sm font-semibold tabular-nums">
                         {fmtH(w.sum.min)} <span className="font-normal text-muted-foreground">/ {fmtH(w.target)}</span>
@@ -232,7 +270,7 @@ function Jornadas({
                     <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                       <span>{w.sum.days} días</span>
                       {w.sum.extra ? <span className="font-medium text-out">{fmtMin(w.sum.extra)} extra</span> : null}
-                      {w.sum.min > w.target ? <span>{fmtMin(w.sum.min - w.target)} por encima de tu jornada</span> : null}
+                      {w.sum.min > w.target ? <span>{fmtMin(w.sum.min - w.target)} por encima de {hasSchedule ? "tu horario" : "tu jornada"}</span> : null}
                     </div>
                   </li>
                 )
@@ -242,12 +280,54 @@ function Jornadas({
         </div>
 
         <Card>
+          <CardContent className="grid gap-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <Eyebrow>Mi horario</Eyebrow>
+              <Button size="sm" variant={hasSchedule ? "outline" : "default"} className="rounded-full" onClick={onSchedule}>
+                <CalendarRangeIcon /> {hasSchedule ? "Editar" : "Configurar"}
+              </Button>
+            </div>
+            {hasSchedule ? (
+              <div className="grid gap-2">
+                {cfg.schedule!.weeks.map((wk, i) => (
+                  <div key={i} className="grid gap-1">
+                    {cfg.schedule!.weeks.length > 1 ? (
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        Semana {i + 1} · {fmtH(cycleWeekMinutes(wk))}
+                        {weekIndex(today, cfg.schedule!) === i ? " · esta semana" : ""}
+                      </span>
+                    ) : null}
+                    <div className="flex flex-wrap gap-1.5">
+                      {wk.map((p, j) =>
+                        p ? (
+                          <span key={j} className="rounded-lg bg-primary/10 px-2 py-1 text-xs">
+                            <b>{DAY_NAMES[j].slice(0, 3)}</b> {p.ini}–{p.fin}
+                          </span>
+                        ) : null
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                ¿Tus turnos cambian de una semana a otra? Configura tu horario y ficharé cada día con el turno que te toca.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardContent className="grid gap-2 text-sm">
-            <Eyebrow>Tu jornada</Eyebrow>
-            <p>
-              {String(cfg.horasDia).replace(".", ",")} h al día · {String(cfg.horasSemana).replace(".", ",")} h a la semana · de{" "}
-              {cfg.ini} a {cfg.fin} con {cfg.pausa} min de pausa
-            </p>
+            <Eyebrow>{hasSchedule ? "Precio por hora" : "Tu jornada"}</Eyebrow>
+            {hasSchedule ? (
+              <p className="text-muted-foreground">Las horas y las extras se calculan con tu horario por turnos.</p>
+            ) : (
+              <p>
+                {String(cfg.horasDia).replace(".", ",")} h al día · {String(cfg.horasSemana).replace(".", ",")} h a la semana · de{" "}
+                {cfg.ini} a {cfg.fin} con {cfg.pausa} min de pausa
+              </p>
+            )}
             <p className="text-muted-foreground">
               {cfg.precioHora
                 ? `Hora normal ${eur(cfg.precioHora)} · hora extra ${eur(cfg.precioExtra || cfg.precioHora)}`

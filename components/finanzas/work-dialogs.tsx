@@ -20,7 +20,7 @@ import {
   type ShiftKind,
   type WorkCfg,
 } from "@/lib/finance"
-import { KIND_LABEL, SS_RATE, fmtMin, shiftMinutes, toMin } from "@/lib/work"
+import { KIND_LABEL, SS_RATE, fmtMin, planFor, planMinutes, shiftMinutes, toMin } from "@/lib/work"
 import { cn } from "@/lib/utils"
 
 const KINDS: ShiftKind[] = ["trabajo", "vacaciones", "festivo", "baja", "libre"]
@@ -75,11 +75,12 @@ export function ShiftDialog({
   onSave: (s: Shift) => void
   onDelete: (s: Shift) => void
 }) {
+  const plan0 = planFor(shift?.d || date, cfg)
   const [kind, setKind] = React.useState<ShiftKind>(shift?.kind || "trabajo")
   const [d, setD] = React.useState(shift?.d || date)
-  const [ini, setIni] = React.useState(shift?.ini || cfg.ini)
-  const [fin, setFin] = React.useState(shift?.fin || cfg.fin)
-  const [pausa, setPausa] = React.useState(String(shift?.pausa ?? cfg.pausa))
+  const [ini, setIni] = React.useState(shift?.ini || plan0?.ini || cfg.ini)
+  const [fin, setFin] = React.useState(shift?.fin || plan0?.fin || cfg.fin)
+  const [pausa, setPausa] = React.useState(String(shift?.pausa ?? (plan0 ? plan0.pausa : plan0 === null ? 0 : cfg.pausa)))
   const [manual, setManual] = React.useState(shift?.ex != null)
   const [exH, setExH] = React.useState(shift?.ex != null ? String(+(shift.ex / 60).toFixed(2)).replace(".", ",") : "")
   const [n, setN] = React.useState(shift?.n || "")
@@ -88,7 +89,9 @@ export function ShiftDialog({
   const draft: Shift = { id: "x", d, kind, ini, fin, pausa: Number(pausa) || 0 }
   const min = shiftMinutes(draft)
   const others = sameDay.filter((s) => s.id !== shift?.id).reduce((a, s) => a + shiftMinutes(s), 0)
-  const autoExtra = Math.max(0, min + others - Math.round(cfg.horasDia * 60))
+  const plan = planFor(d, cfg)
+  const dayTarget = plan === undefined ? Math.round(cfg.horasDia * 60) : plan ? planMinutes(plan) : 0
+  const autoExtra = Math.max(0, min + others - dayTarget)
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -152,7 +155,11 @@ export function ShiftDialog({
               </Field>
             ) : (
               <p className="-mt-2 text-xs text-muted-foreground">
-                Se cuentan como extra las horas que pasan de tu jornada de {String(cfg.horasDia).replace(".", ",")} h al día.
+                {plan === undefined
+                  ? `Se cuentan como extra las horas que pasan de tu jornada de ${String(cfg.horasDia).replace(".", ",")} h al día.`
+                  : plan
+                    ? `Según tu horario, ese día te toca de ${plan.ini} a ${plan.fin}. Lo que pase de ahí cuenta como extra.`
+                    : "Según tu horario, ese día lo tenías libre: todas las horas cuentan como extra."}
               </p>
             )}
           </>

@@ -1,5 +1,5 @@
 /* Cálculos de jornadas, horas extra y nóminas. Minutos y céntimos siempre enteros. */
-import { daysIn, pad, type FinanceData, type Payslip, type Shift, type ShiftKind, type WorkCfg } from "@/lib/finance"
+import { daysIn, pad, type DayPlan, type FinanceData, type Payslip, type Schedule, type Shift, type ShiftKind, type WorkCfg } from "@/lib/finance"
 
 export const KIND_LABEL: Record<ShiftKind, string> = {
   trabajo: "Trabajo",
@@ -49,11 +49,18 @@ export function dayTotals(shifts: Shift[], cfg: WorkCfg) {
     t.shifts.push(s)
     if (!t.kinds.includes(s.kind)) t.kinds.push(s.kind)
   }
+  const useSchedule = scheduleOn(cfg)
   for (const t of Object.values(map)) {
     const manual = t.shifts.filter((s) => s.ex != null)
+    // Con horario por turnos: extra = lo que pasa del turno de ese día (o el día entero si no tocaba trabajar).
+    const plan = useSchedule ? planFor(t.d, cfg) : undefined
     t.extra = manual.length
       ? manual.reduce((a, s) => a + (s.ex || 0), 0)
-      : Math.max(0, t.min - Math.round(cfg.horasDia * 60))
+      : plan === undefined
+        ? Math.max(0, t.min - Math.round(cfg.horasDia * 60))
+        : plan
+          ? Math.max(0, t.min - planMinutes(plan))
+          : t.min
     t.shifts.sort((a, b) => (a.ini || "").localeCompare(b.ini || ""))
   }
   return map
@@ -118,7 +125,7 @@ export function monthDays(map: Record<string, DayTotal>, month: string) {
 export function monthWeeks(map: Record<string, DayTotal>, month: string, cfg: WorkCfg) {
   const first = `${month}-01`,
     last = `${month}-${pad(daysIn(month))}`
-  const out: { start: string; end: string; days: DayTotal[]; sum: PeriodSummary; target: number }[] = []
+  const out: { start: string; end: string; days: DayTotal[]; sum: PeriodSummary; target: number; cycle: number | null }[] = []
   for (let ws = weekStart(first); ws <= last; ws = addDays(ws, 7)) {
     const end = addDays(ws, 6)
     const days: DayTotal[] = []
@@ -126,7 +133,14 @@ export function monthWeeks(map: Record<string, DayTotal>, month: string, cfg: Wo
       const d = addDays(ws, i)
       if (map[d]) days.push(map[d])
     }
-    out.push({ start: ws, end, days, sum: summarize(days, cfg), target: Math.round(cfg.horasSemana * 60) })
+    out.push({
+      start: ws,
+      end,
+      days,
+      sum: summarize(days, cfg),
+      target: weekTarget(ws, cfg),
+      cycle: scheduleOn(cfg) && cfg.schedule!.weeks.length > 1 ? weekIndex(ws, cfg.schedule!) + 1 : null,
+    })
   }
   return out
 }
@@ -176,3 +190,39 @@ export function netPerHour(data: FinanceData) {
   if (neto) return neto / (data.work.cfg.horasSemana * 4.33 || 173)
   return 0
 }
+
+/* ---------- horario por turnos ---------- */
+export const DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+export const scheduleOn = (cfg: WorkCfg) => !!cfg.schedule?.on && !!cfg.schedule.weeks.length
+
+/** Posición (0…n-1) de la semana de esa fecha dentro del ciclo. */
+export function weekIndex(date: string, sch: Schedule) {
+  const diff = Math.round((dateOf(weekStart(date)).getTime() - dateOf(sch.anchor).getTime()) / (7 * 864e5))
+  const n = sch.weeks.length
+  return ((diff % n) + n) % n
+}
+
+/** Turno previsto para una fecha: el plan, null si ese día es libre, undefined si no hay horario. */
+export function planFor(date: string, cfg: WorkCfg): DayPlan | null | undefined {
+  if (!scheduleOn(cfg)) return undefined
+  const sch = cfg.schedule!
+  const wd = (dateOf(date).getDay() + 6) % 7
+  return sch.weeks[weekIndex(date, sch)][wd] || null
+}
+
+export const planMinutes = (p: DayPlan) =>
+  shiftMinutes({ id: "", d: "", kind: "trabajo", ini: p.ini, fin: p.fin, pausa: p.pausa || 0 })
+
+/** Horas objetivo de la semana que empieza en `ws` (lunes). */
+export function weekTarget(ws: string, cfg: WorkCfg) {
+  if (!scheduleOn(cfg)) return Math.round(cfg.horasSemana * 60)
+  let m = 0
+  for (let i = 0; i < 7; i++) {
+    const p = planFor(addDays(ws, i), cfg)
+    if (p) m += planMinutes(p)
+  }
+  return m
+}
+
+export const cycleWeekMinutes = (week: (DayPlan | null)[]) => week.reduce((a, p) => a + (p ? planMinutes(p) : 0), 0)

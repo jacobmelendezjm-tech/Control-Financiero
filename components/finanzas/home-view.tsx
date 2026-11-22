@@ -40,7 +40,7 @@ import {
   type Tx,
   type TxType,
 } from "@/lib/finance"
-import { addDays, dayTotals, fmtH, fmtMin, monthDays, netPerHour, summarize, weekStart } from "@/lib/work"
+import { addDays, dayTotals, fmtH, fmtMin, monthDays, netPerHour, summarize, weekStart, weekTarget } from "@/lib/work"
 import { Orbi } from "@/components/finanzas/orbi"
 import { cn } from "@/lib/utils"
 
@@ -105,7 +105,7 @@ export function HomeView({
   const weekDays = Array.from({ length: 7 }, (_, i) => map[addDays(ws, i)]).filter(Boolean)
   const wk = summarize(weekDays, data.work.cfg)
   const mo = summarize(monthDays(map, cur), data.work.cfg)
-  const target = Math.round(data.work.cfg.horasSemana * 60)
+  const target = weekTarget(ws, data.work.cfg)
   const clockedToday = !!map[today]
 
   const hs = hormigaStats(data, cur)

@@ -85,6 +85,20 @@ export interface WorkCfg {
   ini: string
   fin: string
   pausa: number
+  /** Horario por turnos que se repite en un ciclo de semanas. */
+  schedule?: Schedule
+}
+export interface DayPlan {
+  ini: string
+  fin: string
+  pausa: number
+}
+export interface Schedule {
+  on: boolean
+  /** Lunes de la semana 1 del ciclo (AAAA-MM-DD). */
+  anchor: string
+  /** Cada semana: 7 días de lunes a domingo; null = libre. */
+  weeks: (DayPlan | null)[][]
 }
 export interface WorkData {
   cfg: WorkCfg
@@ -257,6 +271,16 @@ export function normalizeWork(w: unknown): WorkData {
   cfg.precioHora = Number(cfg.precioHora) || 0
   cfg.precioExtra = Number(cfg.precioExtra) || 0
   cfg.pausa = Number(cfg.pausa) || 0
+  const sch = cfg.schedule
+  if (
+    !sch ||
+    typeof sch !== "object" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(sch.anchor) ||
+    !Array.isArray(sch.weeks) ||
+    !sch.weeks.length ||
+    !sch.weeks.every((w) => Array.isArray(w) && w.length === 7)
+  )
+    delete cfg.schedule
   const shifts = Array.isArray(o.shifts)
     ? o.shifts.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(x.d) && SHIFT_KINDS.includes(x.kind))
     : []

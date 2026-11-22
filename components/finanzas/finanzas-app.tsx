@@ -42,6 +42,7 @@ import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
 import { ThemeToggle } from "@/components/finanzas/theme-toggle"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
+import { ScheduleDialog } from "@/components/finanzas/schedule-dialog"
 import { WorkView } from "@/components/finanzas/work-view"
 import {
   AjustesView,
@@ -82,12 +83,13 @@ import {
   type Goal,
   type Payslip,
   type Recurring,
+  type Schedule,
   type Shift,
   type Tx,
   type TxType,
   type WorkCfg,
 } from "@/lib/finance"
-import { dayTotals, fmtMin, monthDays, shiftMinutes, summarize } from "@/lib/work"
+import { dayTotals, fmtMin, monthDays, planFor, shiftMinutes, summarize } from "@/lib/work"
 import { cn } from "@/lib/utils"
 
 const VIEWS = [
@@ -139,6 +141,7 @@ type Sheet =
   | { kind: "shift"; shift: Shift | null; date: string }
   | { kind: "payslip"; payslip: Payslip | null }
   | { kind: "workcfg" }
+  | { kind: "schedule" }
   | null
 
 /* ---------- operaciones sobre un borrador ---------- */
@@ -636,7 +639,16 @@ export function FinanzasApp() {
   /* ---------- trabajo ---------- */
   const clockToday = () => {
     const cfg = real.work.cfg
-    const s: Shift = { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa }
+    const plan = planFor(todayStr(), cfg)
+    if (plan === null) {
+      // Con horario por turnos y hoy libre: se abre el formulario para apuntarlo a mano.
+      open({ kind: "shift", shift: null, date: todayStr() })
+      orbiSay("Hoy no tenías turno según tu horario. Apúntalo y lo cuento como extra.", "think")
+      return
+    }
+    const s: Shift = plan
+      ? { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: plan.ini, fin: plan.fin, pausa: plan.pausa || 0 }
+      : { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa }
     update((d) => {
       d.work.shifts.push(s)
     })
@@ -673,6 +685,45 @@ export function FinanzasApp() {
     })
     close()
     toast.success("Jornada actualizada")
+  }
+  const saveSchedule = (sch: Schedule | undefined) => {
+    update((d) => {
+      d.hasSettings = true
+      if (sch) d.work.cfg.schedule = sch
+      else delete d.work.cfg.schedule
+    })
+    close()
+    if (!orbiSay(sch ? "¡Horario guardado! Ahora ficho cada día con el turno que te toca." : "Horario quitado. Vuelvo a tu jornada normal.", "happy"))
+      toast.success(sch ? "Horario guardado" : "Horario quitado")
+  }
+  /** Apunta los días pasados del mes según el horario, sin tocar los ya registrados. */
+  const fillFromSchedule = () => {
+    if (guardDemo()) return
+    const cfg = real.work.cfg
+    const today = todayStr()
+    const done = new Set(real.work.shifts.map((s) => s.d))
+    const add: Shift[] = []
+    for (let k = 1; k <= daysIn(month); k++) {
+      const d = `${month}-${pad(k)}`
+      if (d > today || done.has(d)) continue
+      const p = planFor(d, cfg)
+      if (p) add.push({ id: "s" + uid() + k, d, kind: "trabajo", ini: p.ini, fin: p.fin, pausa: p.pausa || 0 })
+    }
+    if (!add.length) return toast("No hay días pendientes de tu horario en este mes.")
+    open({
+      kind: "confirm",
+      title: "Rellenar con mi horario",
+      body: `Se apuntarán ${add.length} ${add.length === 1 ? "jornada" : "jornadas"} de ${monthLabel(month)} hasta hoy, según tu horario. Los días que ya registraste no se tocan.`,
+      yes: "Rellenar",
+      onYes: () => {
+        update((d) => {
+          d.work.shifts.push(...add)
+        })
+        close()
+        if (!orbiSay(`¡Hecho! ${add.length} jornadas apuntadas de golpe. Revisa si algún día hiciste horas de más.`, "happy"))
+          toast.success(`${add.length} jornadas apuntadas`)
+      },
+    })
   }
   const savePayslip = ({ p, asIncome }: PayslipSaveResult) => {
     update((d) => {
@@ -853,6 +904,8 @@ export function FinanzasApp() {
                   onDay={openDay}
                   onClock={clockToday}
                   onCfg={() => open({ kind: "workcfg" })}
+                  onSchedule={() => !guardDemo() && open({ kind: "schedule" })}
+                  onFill={fillFromSchedule}
                   onNewPayslip={() => openPayslip(null)}
                   onEditPayslip={openPayslip}
                 />
@@ -944,6 +997,7 @@ export function FinanzasApp() {
             onDelete={deletePayslip}
           />
         ) : null}
+        {sheet?.kind === "schedule" ? <ScheduleDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveSchedule} /> : null}
         {sheet?.kind === "workcfg" ? <WorkCfgDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveWorkCfg} /> : null}
         {sheet?.kind === "goal" ? (
           <GoalDialog key={sheetKey} open goal={sheet.goal} onClose={close} onSave={saveGoal} onDelete={deleteGoal} />
