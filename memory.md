@@ -91,9 +91,16 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - Correos bonitos, personalizados y en español; el código del correo en el asunto.
 - Horas extra con horario por turnos: un día trabajado fuera del horario cuenta entero como extra (decisión de Claude, pendiente de confirmar por el usuario).
 
+## Recordatorios (desde el 2026-11-23)
+
+- Web Push: `lib/reminders.ts` (agenda y clave pública VAPID), `hooks/use-reminders.ts`, `components/finanzas/reminders-card.tsx` (en Más), `public/sw.js` (eventos `push` y `notificationclick`), `app/api/push/cron/route.ts`.
+- Base de datos: `20261125000000_push_reminders.sql` + `supabase/private/push_setup.sql` (claves VAPID, secreto del cron y `pg_cron`; **no está en git**, guardarlo bien: sin él no se pueden regenerar las suscripciones existentes).
+- Solo en la app publicada (el service worker no se registra en desarrollo). iPhone: solo instalada.
+
 ## Estado actual / siguiente paso
 
 - **Pendiente del usuario**:
+  - Ejecutar `20261125000000_push_reminders.sql` y después `supabase/private/push_setup.sql` para activar los recordatorios.
   - Pegar en Supabase las plantillas nuevas de `supabase/templates/` (Magic Link y Confirm signup, con sus asuntos).
   - Probar la sincronización por filas con su cuenta real en dos dispositivos (no se pudo probar desde aquí: el código llega a su correo).
 - Valorar dominio propio para el remitente de correo.

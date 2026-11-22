@@ -12,6 +12,17 @@ Ejecutar en orden en **Supabase → SQL Editor** (todas se pueden repetir sin ro
 | `20261122000000_orbe_finance_data.sql` | Formato antiguo (un documento JSON por usuario) y `delete_my_account()`. Se mantiene solo para migrar. |
 | `20261123000000_orbe_schema.sql` | Esquema relacional completo (lo que usa la app). |
 | `20261124000000_profiles_email.sql` | Guarda el correo de cada usuario en `profiles.email` (copia automática de `auth.users`). |
+| `20261125000000_push_reminders.sql` | Notificaciones push: suscripciones, agenda de recordatorios y funciones `orbe_push_*`. |
+| `private/push_setup.sql` (**no está en git**) | Claves VAPID, secreto del cron y tarea `pg_cron` cada 10 min que llama a `/api/push/cron`. |
+
+## Recordatorios (notificaciones push)
+
+1. La app (con o sin cuenta) se suscribe con Web Push y guarda con `orbe_push_sync()` su agenda de los próximos 14 días (fichar, nómina, fijos, resumen diario y semanal; `lib/reminders.ts`).
+2. `pg_cron` llama cada 10 minutos a `https://moneycare-five.vercel.app/api/push/cron` con el secreto.
+3. La ruta pide `orbe_push_due(secreto)` (devuelve los avisos que tocan y las claves VAPID, y los marca como enviados), los envía con `web-push` y borra las suscripciones caducadas con `orbe_push_gone()`.
+4. Si alguien lleva 3 días sin abrir la app, recibe un aviso de Orbi a su hora (como mucho cada 3 días).
+
+`push_subscriptions` y `push_sent` no son accesibles directamente; los secretos viven en `orbe_private.config`. iPhone: solo con la app instalada en la pantalla de inicio.
 
 ## Tablas
 

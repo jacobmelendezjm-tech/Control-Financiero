@@ -57,6 +57,7 @@ import {
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
 import { useCloud, type CloudStatus } from "@/hooks/use-cloud"
+import { useReminders } from "@/hooks/use-reminders"
 import { ConflictDialog, STATUS_TEXT } from "@/components/finanzas/account-card"
 import { orbiSay, pick } from "@/lib/orbi"
 import { scrollToY, setScrollLocked } from "@/lib/scroll"
@@ -193,6 +194,7 @@ export function FinanzasApp() {
   const store = useFinance()
   const pwa = usePwa()
   const cloud = useCloud(store)
+  const reminders = useReminders(store.real, store.showingDemo)
   const { real, view: D, showingDemo, loaded, mode, update } = store
   const [view, setView] = React.useState<View>("inicio")
   const [month, setMonth] = React.useState(CUR)
@@ -941,6 +943,7 @@ export function FinanzasApp() {
                   onTour={startTour}
                   onProfile={openOnboarding}
                   cloud={cloud}
+                  reminders={reminders}
                 />
               ) : (
                 <AjustesView

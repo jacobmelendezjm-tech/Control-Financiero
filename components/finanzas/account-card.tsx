@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { CloudCheckIcon, CloudIcon, CloudOffIcon, LoaderCircleIcon, MailIcon, RefreshCwIcon, ShieldCheckIcon } from "lucide-react"
+import { toast } from "sonner"
+import { CloudCheckIcon, CloudIcon, CloudOffIcon, LoaderCircleIcon, MailCheckIcon, MailIcon, RefreshCwIcon, ShieldCheckIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -30,6 +31,15 @@ function since(iso: string | null) {
   return new Date(iso).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
+/** Aviso emergente: el correo con el código ya va de camino. */
+export function mailSentToast(email: string) {
+  toast.success("¡Correo enviado!", {
+    description: `Te hemos enviado un código a ${email}. Puede tardar un minuto; mira también en spam o promociones.`,
+    icon: <MailCheckIcon className="size-5 text-primary" />,
+    duration: 7000,
+  })
+}
+
 /** Cuenta opcional: inicio de sesión con código por correo y sincronización. */
 export function AccountCard({ cloud }: { cloud: Cloud }) {
   const [email, setEmail] = React.useState("")
@@ -52,6 +62,7 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
     if (err) return setMsg(err)
     setEmail(v)
     setStep("code")
+    mailSentToast(v)
   }
   const verify = async (e: React.FormEvent) => {
     e.preventDefault()

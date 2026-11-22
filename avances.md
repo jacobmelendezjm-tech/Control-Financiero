@@ -94,6 +94,12 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - Nuevo paso «¿Dónde guardamos tus datos?» en el formulario de bienvenida: crear cuenta con el correo (código verificado sin salir del formulario) o seguir sin cuenta, con aviso de que los datos quedan solo en el dispositivo y de que pueden subirse a la nube más adelante desde «Más». No aparece si ya hay sesión.
 
+## 23 de noviembre de 2026 · Recordatorios
+
+- **Aviso de correo enviado**: al pedir el código aparece una notificación emergente con el correo y el consejo de mirar en spam (Más y bienvenida).
+- **Notificaciones push** con la app cerrada: fichar al acabar el turno, día de cobro, fijos, resumen diario (a la hora elegida y solo si no has apuntado nada) y semanal, y «Orbi te echa de menos» tras 3 días sin entrar. Tarjeta «Recordatorios» en Más con prueba y próximos avisos. Funciona sin cuenta; los avisos no llevan importes.
+- Servidor: `app/api/push/cron` + `pg_cron` en Supabase; los secretos en `orbe_private.config` (archivo privado fuera de git). 11 comprobaciones nuevas en PGlite.
+
 ---
 
 ## Plantilla para nuevas entradas

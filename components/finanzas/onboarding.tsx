@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
 import { Spinner } from "@/components/ui/skeleton"
+import { mailSentToast } from "@/components/finanzas/account-card"
 import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Objetivo } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
@@ -198,6 +199,7 @@ export function Onboarding({
     if (e) return setErr(e)
     setEmail(v)
     setCodeSent(true)
+    mailSentToast(v)
   }
   const verify = async () => {
     if (!/^\d{6,10}$/.test(code.trim())) return setErr("Escribe el código que te ha llegado por correo.")

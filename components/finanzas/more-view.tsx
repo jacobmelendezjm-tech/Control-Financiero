@@ -27,6 +27,8 @@ import { OrbeMark } from "@/components/finanzas/logo"
 import { Orbi } from "@/components/finanzas/orbi"
 import { AccountCard } from "@/components/finanzas/account-card"
 import type { Cloud } from "@/hooks/use-cloud"
+import type { Reminders } from "@/hooks/use-reminders"
+import { RemindersCard } from "@/components/finanzas/reminders-card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Eyebrow } from "@/components/finanzas/kit"
@@ -52,6 +54,7 @@ export function MoreView({
   onTour,
   onProfile,
   cloud,
+  reminders,
 }: {
   nombre: string
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
@@ -62,6 +65,7 @@ export function MoreView({
   onTour: () => void
   onProfile: () => void
   cloud: Cloud
+  reminders: Reminders
 }) {
   const { resolvedTheme } = useTheme()
   const switchTheme = useThemeSwitch()
@@ -92,6 +96,7 @@ export function MoreView({
 
       <div className="grid min-w-0 gap-4">
         <AccountCard cloud={cloud} />
+        <RemindersCard r={reminders} />
 
         <section className="relative overflow-hidden rounded-[28px] bg-card p-5 ring-1 ring-foreground/8">
           <div aria-hidden className="absolute -right-6 -bottom-8 size-40 rounded-full bg-glow/15 blur-2xl" />
