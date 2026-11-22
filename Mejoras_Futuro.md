@@ -54,6 +54,12 @@ Respetar siempre las decisiones del usuario: cuenta opcional y app local primero
 
 ## 2. App nativa (iOS y Android)
 
+Decidido el 23 nov 2026: se deja para más adelante. Orden recomendado:
+
+1. **Google Play con PWABuilder** (P2 · S · 💶 25 $ una vez): empaquetar la web (TWA) desde pwabuilder.com. Falta `/.well-known/assetlinks.json`, capturas y textos de la ficha. Las actualizaciones de la web llegan solas.
+2. **APK de descarga directa** (P3 · S · 🆓): el mismo paquete compartido como archivo, para pruebas.
+3. **App Store** (P3 · L · 💶 99 $/año): Capacitor con funciones nativas (widgets, Face ID) para que Apple no la rechace; necesita Mac o compilación en la nube.
+
 - **Capacitor** sobre la web actual (M): icono en las tiendas, notificaciones fiables en iPhone, widgets.
 - Widget de saldo y de «fichar hoy» en la pantalla de inicio (L).
 - Desbloqueo con huella o Face ID para abrir la app (M).
