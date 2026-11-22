@@ -323,3 +323,22 @@ html.lenis body {
 .lenis.lenis-stopped {
   overflow: clip;
 }
+
+/* ---------- Esqueletos de carga ---------- */
+@keyframes skeleton-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+/* En la capa de componentes: así bg-* en el propio elemento puede cambiar su color. */
+@layer components {
+  .skeleton {
+    background-color: var(--muted);
+    background-image: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--card) 70%, transparent) 50%, transparent 100%);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

@@ -34,6 +34,8 @@ import {
   type TxSaveResult,
 } from "@/components/finanzas/dialogs"
 import { HomeView } from "@/components/finanzas/home-view"
+import { HomeSkeleton } from "@/components/finanzas/app-skeleton"
+import { Spinner } from "@/components/ui/skeleton"
 import { HormigaView } from "@/components/finanzas/hormiga-view"
 import { OrbeWordmark } from "@/components/finanzas/logo"
 import { MoreView } from "@/components/finanzas/more-view"
@@ -807,6 +809,8 @@ export function FinanzasApp() {
   }
   const newTx = (type?: TxType) => loaded && open({ kind: "tx", tx: null, type })
   const memory = mode === "memory"
+  // En un dispositivo nuevo, mientras bajan los datos de la nube: esqueleto en vez del ejemplo.
+  const cloudLoading = !!cloud.user && cloud.status === "syncing" && showingDemo
   const showMonth = MONTH_VIEWS.includes(view)
   const tab = tabOf(view)
   const parent = PARENT[view]
@@ -858,7 +862,9 @@ export function FinanzasApp() {
 
         <main id="view" tabIndex={-1} className="outline-none" key={view}>
           {!loaded ? (
-            <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Cargando tus cuentas…</div>
+            <HomeSkeleton />
+          ) : cloudLoading ? (
+            <HomeSkeleton label="Trayendo tus datos de la nube…" />
           ) : (
             <>
               <Banners demo={showingDemo} memory={memory} onStart={startFresh} />
@@ -1178,7 +1184,7 @@ function StatusPill({
       cloud === "synced"
         ? ["bg-good", "En la nube"]
         : cloud === "syncing" || cloud === "pending"
-          ? ["bg-gold animate-pulse", "Sincronizando"]
+          ? ["spin", "Sincronizando"]
           : cloud === "offline"
             ? ["bg-muted-foreground", "Sin conexión"]
             : ["bg-bad", "Revisar nube"]
@@ -1189,14 +1195,14 @@ function StatusPill({
         title={STATUS_TEXT[cloud]}
         className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8"
       >
-        <i className={cn("size-1.5 rounded-full", dot)} />
+        {dot === "spin" ? <Spinner className="size-3 text-primary" label="Sincronizando" /> : <i className={cn("size-1.5 rounded-full", dot)} />}
         {txt}
       </button>
     )
   }
   const [dot, txt] =
     mode === "loading"
-      ? ["bg-muted-foreground", "Cargando…"]
+      ? ["spin", "Cargando…"]
       : demo
         ? ["bg-gold", "Ejemplo"]
         : mode === "local"
@@ -1204,7 +1210,7 @@ function StatusPill({
           : ["bg-bad", "Sin guardar"]
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8">
-      <i className={cn("size-1.5 rounded-full", dot)} />
+      {dot === "spin" ? <Spinner className="size-3" /> : <i className={cn("size-1.5 rounded-full", dot)} />}
       {txt}
     </span>
   )

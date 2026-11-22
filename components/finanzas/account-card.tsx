@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Eyebrow } from "@/components/finanzas/kit"
+import { Spinner } from "@/components/ui/skeleton"
 import type { Cloud, CloudStatus } from "@/hooks/use-cloud"
 import { cn } from "@/lib/utils"
 
@@ -236,7 +237,7 @@ function AccountDialogs({ ask, setAsk, cloud }: { ask: null | "logout" | "delete
                   close()
                 }}
               >
-                Cerrar sesión y mantenerlos aquí
+                {busy ? <Spinner /> : null} Cerrar sesión y mantenerlos aquí
               </Button>
               <Button
                 variant="outline"
@@ -248,7 +249,7 @@ function AccountDialogs({ ask, setAsk, cloud }: { ask: null | "logout" | "delete
                   close()
                 }}
               >
-                Cerrar sesión y borrarlos de este dispositivo
+                {busy ? <Spinner /> : null} Cerrar sesión y borrarlos de este dispositivo
               </Button>
             </DialogFooter>
           </>
@@ -281,7 +282,7 @@ function AccountDialogs({ ask, setAsk, cloud }: { ask: null | "logout" | "delete
                   close()
                 }}
               >
-                Sí, borrar mi cuenta
+                {busy ? <Spinner /> : null} Sí, borrar mi cuenta
               </Button>
             </DialogFooter>
           </>
