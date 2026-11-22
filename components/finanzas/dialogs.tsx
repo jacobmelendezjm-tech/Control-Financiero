@@ -108,7 +108,7 @@ export function Shell({
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto sm:max-w-md">
+      <DialogContent data-lenis-prevent className="max-h-[92svh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg">{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}

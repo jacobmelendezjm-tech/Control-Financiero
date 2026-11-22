@@ -303,3 +303,23 @@ html.theme-fade *::after {
   transition-timing-function: ease !important;
   transition-delay: 0s !important;
 }
+
+/* ---------- Smooth scroll: Lenis cuando hay JS, CSS como respaldo ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.lenis) {
+    scroll-behavior: smooth;
+  }
+}
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}

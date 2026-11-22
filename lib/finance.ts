@@ -48,6 +48,19 @@ export interface Settings {
   /** Importe máximo (céntimos) para que un gasto cuente como hormiga. */
   hormigaMax: number
   nombre: string
+  perfil: Perfil
+}
+
+/* ---------- perfil (formulario de bienvenida) ---------- */
+export type Cobro = "fija" | "horas" | "autonomo" | "no"
+export type Objetivo = "ahorrar" | "emergencia" | "controlar" | "deudas" | "saber"
+export interface Perfil {
+  done?: boolean
+  cobro?: Cobro
+  neto?: number // céntimos al mes, aproximado
+  diaCobro?: number
+  objetivo?: Objetivo
+  ahorroMes?: number // céntimos
 }
 
 /* ---------- trabajo ---------- */
@@ -227,6 +240,7 @@ export const defaultSettings = (): Settings => ({
   started: false,
   hormigaMax: 1000,
   nombre: "",
+  perfil: {},
 })
 export const defaultWork = (): WorkData => ({
   cfg: { horasDia: 8, horasSemana: 40, precioHora: 0, precioExtra: 0, ini: "09:00", fin: "17:30", pausa: 30 },
@@ -261,6 +275,7 @@ export function normalizeSettings(s: unknown): Settings {
   out.saldoInicial = Number(out.saldoInicial) || 0
   out.hormigaMax = Number(out.hormigaMax) || 1000
   out.nombre = typeof out.nombre === "string" ? out.nombre.slice(0, 30) : ""
+  out.perfil = out.perfil && typeof out.perfil === "object" ? out.perfil : {}
   return out
 }
 export const byDate = (a: Tx, b: Tx) => b.d.localeCompare(a.d) || (b.k || 0) - (a.k || 0)

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Instrument_Serif, Inter, Sora } from "next/font/google"
 
 import "./globals.css"
+import { SmoothScroll } from "@/components/smooth-scroll"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
@@ -42,7 +43,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          {children}
+          <SmoothScroll>{children}</SmoothScroll>
           <Toaster position="top-center" />
         </ThemeProvider>
       </body>

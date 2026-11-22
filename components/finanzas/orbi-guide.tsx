@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
 import type { FinanceData } from "@/lib/finance"
 import { buddyTips, greetingLine, type OrbiLine } from "@/lib/orbi"
+import { scrollToY } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 
 /* ---------- texto que se escribe solo ---------- */
@@ -349,16 +350,19 @@ export function OrbiTour({ open, onClose }: { open: boolean; onClose: () => void
       return
     }
     let t: ReturnType<typeof setTimeout>
+    let t2: ReturnType<typeof setTimeout>
     if (!step.fixed) {
       const r = el.getBoundingClientRect()
-      window.scrollTo({ top: Math.max(0, r.top + window.scrollY - 76), behavior: "smooth" })
+      scrollToY(Math.max(0, r.top + window.scrollY - 76))
       t = setTimeout(measure, 450)
+      t2 = setTimeout(measure, 950) // de nuevo al acabar el desplazamiento suave
     } else measure()
     const onResize = () => measure()
     window.addEventListener("resize", onResize)
     return () => {
       alive = false
       clearTimeout(t)
+      clearTimeout(t2)
       window.removeEventListener("resize", onResize)
     }
   }, [open, i, step.target, step.fixed, finish])

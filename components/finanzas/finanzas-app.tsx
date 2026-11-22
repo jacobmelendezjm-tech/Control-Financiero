@@ -53,6 +53,7 @@ import {
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
 import { orbiSay, pick } from "@/lib/orbi"
+import { scrollToY, setScrollLocked } from "@/lib/scroll"
 import { usePwa } from "@/hooks/use-pwa"
 import {
   CUR,
@@ -218,7 +219,7 @@ export function FinanzasApp() {
   const startTour = () => {
     setView("inicio")
     if (location.hash !== "#inicio") location.hash = "inicio"
-    window.scrollTo(0, 0)
+    scrollToY(0, true)
     setTimeout(() => setTour(true), 250)
   }
 
@@ -227,6 +228,10 @@ export function FinanzasApp() {
     setSheet(s)
   }
   const close = () => setSheet(null)
+  // Sin smooth scroll de fondo mientras hay un diálogo abierto.
+  React.useEffect(() => {
+    setScrollLocked(!!sheet || tour)
+  }, [sheet, tour])
 
   /* Navegación con #hash para que el botón atrás del móvil funcione. */
   React.useEffect(() => {
@@ -248,7 +253,7 @@ export function FinanzasApp() {
   }, [])
   const go = (v: View) => {
     setView(v)
-    window.scrollTo(0, 0)
+    scrollToY(0, true)
     if (location.hash !== "#" + v) location.hash = v
   }
 

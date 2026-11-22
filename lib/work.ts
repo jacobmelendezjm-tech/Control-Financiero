@@ -1,5 +1,5 @@
 /* Cálculos de jornadas, horas extra y nóminas. Minutos y céntimos siempre enteros. */
-import { daysIn, pad, type Payslip, type Shift, type ShiftKind, type WorkCfg } from "@/lib/finance"
+import { daysIn, pad, type FinanceData, type Payslip, type Shift, type ShiftKind, type WorkCfg } from "@/lib/finance"
 
 export const KIND_LABEL: Record<ShiftKind, string> = {
   trabajo: "Trabajo",
@@ -162,4 +162,17 @@ export function payslipYear(payslips: Payslip[], year: string) {
     minNeto: list.length ? Math.min(...list.map((p) => p.neto)) : 0,
     maxNeto: list.length ? Math.max(...list.map((p) => p.neto)) : 0,
   }
+}
+
+/** Neto que ganas por hora: última nómina ÷ horas de ese mes; si no, el sueldo del perfil. */
+export function netPerHour(data: FinanceData) {
+  const map = dayTotals(data.work.shifts, data.work.cfg)
+  const last = [...data.payslips].sort((a, b) => b.m.localeCompare(a.m))[0]
+  if (last) {
+    const h = summarize(monthDays(map, last.m), data.work.cfg).min / 60
+    if (h > 0) return last.neto / h
+  }
+  const neto = data.settings.perfil?.neto
+  if (neto) return neto / (data.work.cfg.horasSemana * 4.33 || 173)
+  return 0
 }
