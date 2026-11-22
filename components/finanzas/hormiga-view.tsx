@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CatIcon, Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS, WEEKDAY_NAMES } from "@/components/finanzas/kit"
 import { MINUS, catMap, eur, eur0, fmtPlain, hormigaStats, monthLabel, pct, type FinanceData, type Tx } from "@/lib/finance"
-import { dayTotals, monthDays, summarize } from "@/lib/work"
+import { netPerHour } from "@/lib/work"
 
 export function HormigaView({
   data,
@@ -29,11 +29,8 @@ export function HormigaView({
   const peak = hs.weekday.indexOf(Math.max(...hs.weekday))
 
   // ¿Cuántas horas de trabajo cuesta? Neto de la última nómina ÷ horas del mes trabajado.
-  const map = dayTotals(data.work.shifts, data.work.cfg)
-  const lastPs = [...data.payslips].sort((a, b) => b.m.localeCompare(a.m))[0]
-  const psHours = lastPs ? summarize(monthDays(map, lastPs.m), data.work.cfg).min / 60 : 0
-  const netPerHour = lastPs && psHours ? lastPs.neto / psHours : 0
-  const workHours = netPerHour ? hs.total / netPerHour : 0
+  const perHour = netPerHour(data)
+  const workHours = perHour ? hs.total / perHour : 0
 
   return (
     <div className="view-in grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
@@ -56,7 +53,7 @@ export function HormigaView({
           <Stat
             label="En horas de trabajo"
             value={workHours ? `${workHours.toLocaleString("es-ES", { maximumFractionDigits: 1 })} h` : "—"}
-            sub={workHours ? "según tu última nómina" : "Apunta nómina y jornadas"}
+            sub={workHours ? "según lo que ganas por hora" : "Dime tu sueldo en tu perfil"}
           />
           <Stat label="Si los reduces a la mitad" value={`+${eur0(hs.year / 2)}`} sub="ahorrarías al año" className="col-span-2" />
         </div>

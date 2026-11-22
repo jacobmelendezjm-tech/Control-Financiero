@@ -37,6 +37,7 @@ import { HomeView } from "@/components/finanzas/home-view"
 import { HormigaView } from "@/components/finanzas/hormiga-view"
 import { OrbeWordmark } from "@/components/finanzas/logo"
 import { MoreView } from "@/components/finanzas/more-view"
+import { Onboarding, type OnboardAnswers } from "@/components/finanzas/onboarding"
 import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
 import { ThemeToggle } from "@/components/finanzas/theme-toggle"
@@ -193,28 +194,119 @@ export function FinanzasApp() {
   const [last, setLast] = React.useState<{ type: TxType; cat: Partial<Record<TxType, string>> }>({ type: "g", cat: {} })
   const [tour, setTour] = React.useState(false)
   const [buddyOn, setBuddyOn] = React.useState(true)
+  const [onboard, setOnboard] = React.useState(false)
+  const [obKey, setObKey] = React.useState(0)
+  /** «later»: lo dejó para luego · «hidden»: cerró también la tarjeta de Inicio. */
+  const [obPref, setObPref] = React.useState<string | null>(null)
+  const firstRun = React.useRef(true)
 
-  /* Orbi: preferencia de mostrarlo y tutorial la primera vez. */
+  /* Al abrir: primero el formulario de bienvenida, después el tutorial (una sola vez cada uno). */
   React.useEffect(() => {
-    let done = true
+    if (!loaded || firstRun.current === false) return
+    let tourDone = true,
+      pref: string | null = null
     try {
-      done = localStorage.getItem("orbe.tour") === "done"
-      // Preferencia guardada en este dispositivo.
+      tourDone = localStorage.getItem("orbe.tour") === "done"
+      pref = localStorage.getItem("orbe.onboard")
+      // Preferencias guardadas en este dispositivo.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBuddyOn(localStorage.getItem("orbe.buddy") !== "off")
+      setObPref(pref)
     } catch {}
-    if (done) return
+    const needsProfile = !real.settings.perfil?.done && !pref
+    if (!needsProfile && tourDone) return
     const t = setTimeout(() => {
+      firstRun.current = false
       if (location.hash && location.hash !== "#inicio") location.hash = "inicio"
-      setTour(true)
-    }, 3000)
+      if (needsProfile) {
+        setObKey((k) => k + 1)
+        setOnboard(true)
+      } else setTour(true)
+    }, 2900)
     return () => clearTimeout(t)
-  }, [])
+    // Solo una vez, cuando ya están cargados los datos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded])
+  const savePref = (v: string) => {
+    setObPref(v)
+    try {
+      localStorage.setItem("orbe.onboard", v)
+    } catch {}
+  }
+  const openOnboarding = () => {
+    setObKey((k) => k + 1)
+    setOnboard(true)
+  }
   const toggleBuddy = (on: boolean) => {
     setBuddyOn(on)
     try {
       localStorage.setItem("orbe.buddy", on ? "on" : "off")
     } catch {}
+  }
+  const onboardLater = () => {
+    setOnboard(false)
+    if (!real.settings.perfil?.done) savePref("later")
+    setTimeout(() => orbiSay("¡Sin problema! Cuando quieras personalizamos Orbe desde la tarjeta de Inicio o desde «Más».", "happy"), 450)
+  }
+  const onboardFinish = (a: OnboardAnswers, withTour: boolean) => {
+    const works = a.cobro === "fija" || a.cobro === "horas"
+    update((d) => {
+      d.hasSettings = true
+      d.settings.started = true
+      if (a.nombre) d.settings.nombre = a.nombre
+      d.settings.perfil = {
+        ...d.settings.perfil,
+        done: true,
+        cobro: a.cobro ?? d.settings.perfil?.cobro,
+        neto: a.neto ?? d.settings.perfil?.neto,
+        diaCobro: a.diaCobro ?? d.settings.perfil?.diaCobro,
+        objetivo: a.objetivo ?? d.settings.perfil?.objetivo,
+        ahorroMes: a.ahorroMes ?? d.settings.perfil?.ahorroMes,
+      }
+      // Recordatorio mensual de la nómina (un fijo de ingreso que se apunta con un toque).
+      if (a.recordar && a.neto) {
+        const rec: Recurring = {
+          id: "r-nomina",
+          n: "Nómina",
+          t: "i",
+          c: a.neto,
+          cat: d.settings.cats.some((c) => c.id === "nomina") ? "nomina" : "otros-i",
+          dia: a.diaCobro || 1,
+          on: true,
+        }
+        const i = d.settings.recs.findIndex((r) => r.id === rec.id)
+        if (i >= 0) d.settings.recs[i] = rec
+        else d.settings.recs.push(rec)
+      }
+      const cfg = d.work.cfg
+      if (a.precioHora) cfg.precioHora = a.precioHora
+      if (a.precioExtra) cfg.precioExtra = a.precioExtra
+      else if (a.precioHora && !cfg.precioExtra) cfg.precioExtra = a.precioHora
+      if (works) {
+        if (a.horasDia) {
+          cfg.horasDia = a.horasDia
+          cfg.horasSemana = Math.round(a.horasDia * 5 * 10) / 10
+        }
+        if (a.ini) cfg.ini = a.ini
+        if (a.fin) cfg.fin = a.fin
+      }
+      // El saldo de hoy pasa a ser el real: se ajusta el saldo inicial.
+      if (a.saldo != null) {
+        const movs = Object.values(d.months)
+          .flat()
+          .filter((t) => t.d <= todayStr())
+          .reduce((acc, t) => acc + (t.t === "i" ? t.c : -t.c), 0)
+        d.settings.saldoInicial = a.saldo - movs
+      }
+      if (a.objetivo === "ahorrar" && a.metaNombre && a.metaObj)
+        d.goals.push({ id: "g" + uid(), n: a.metaNombre, obj: a.metaObj, ah: 0 })
+      if (a.objetivo === "emergencia" && !d.goals.some((g) => /emergencia/i.test(g.n)))
+        d.goals.push({ id: "g" + uid(), n: "Fondo de emergencia", obj: a.neto ? a.neto * 3 : 300000, ah: 0 })
+    })
+    savePref("done")
+    setOnboard(false)
+    if (withTour) startTour()
+    else setTimeout(() => orbiSay(a.nombre ? `¡Todo listo, ${a.nombre}! Tócame cuando quieras un consejo.` : "¡Todo listo! Tócame cuando quieras un consejo.", "wave"), 450)
   }
   const startTour = () => {
     setView("inicio")
@@ -230,8 +322,8 @@ export function FinanzasApp() {
   const close = () => setSheet(null)
   // Sin smooth scroll de fondo mientras hay un diálogo abierto.
   React.useEffect(() => {
-    setScrollLocked(!!sheet || tour)
-  }, [sheet, tour])
+    setScrollLocked(!!sheet || tour || onboard)
+  }, [sheet, tour, onboard])
 
   /* Navegación con #hash para que el botón atrás del móvil funcione. */
   React.useEffect(() => {
@@ -672,7 +764,10 @@ export function FinanzasApp() {
     <>
       <Splash />
       <OrbiTour open={tour} onClose={() => setTour(false)} />
-      {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour} /> : null}
+      {loaded && onboard ? (
+        <Onboarding key={obKey} open data={real} onFinish={onboardFinish} onLater={onboardLater} />
+      ) : null}
+      {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour || onboard} /> : null}
       <SideNav view={view} onGo={(v) => go(v)} onAdd={() => loaded && open({ kind: "add" })} />
       <div className="lg:pl-[260px]">
       <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
@@ -718,6 +813,11 @@ export function FinanzasApp() {
                   onClock={clockToday}
                   onRegisterRec={(r) => registerRecs([r], CUR())}
                   onRegisterAll={(rs) => registerRecs(rs, CUR())}
+                  profileCard={
+                    !real.settings.perfil?.done && obPref === "later"
+                      ? { onStart: openOnboarding, onDismiss: () => savePref("hidden") }
+                      : undefined
+                  }
                 />
               ) : view === "resumen" ? (
                 <ResumenView
@@ -765,6 +865,7 @@ export function FinanzasApp() {
                   buddyOn={buddyOn}
                   onBuddy={toggleBuddy}
                   onTour={startTour}
+                  onProfile={openOnboarding}
                 />
               ) : (
                 <AjustesView

@@ -12,6 +12,7 @@ import {
   SparklesIcon,
   TrendingDownIcon,
   TrendingUpIcon,
+  XIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -39,7 +40,8 @@ import {
   type Tx,
   type TxType,
 } from "@/lib/finance"
-import { addDays, dayTotals, fmtH, fmtMin, monthDays, summarize, weekStart } from "@/lib/work"
+import { addDays, dayTotals, fmtH, fmtMin, monthDays, netPerHour, summarize, weekStart } from "@/lib/work"
+import { Orbi } from "@/components/finanzas/orbi"
 import { cn } from "@/lib/utils"
 
 export type HomeGo = "resumen" | "movimientos" | "trabajo" | "nominas" | "hormiga" | "metas" | "presupuesto"
@@ -58,6 +60,7 @@ export function HomeView({
   onClock,
   onRegisterRec,
   onRegisterAll,
+  profileCard,
 }: {
   data: FinanceData
   demo: boolean
@@ -67,6 +70,7 @@ export function HomeView({
   onClock: () => void
   onRegisterRec: (r: Recurring) => void
   onRegisterAll: (rs: Recurring[]) => void
+  profileCard?: { onStart: () => void; onDismiss: () => void }
 }) {
   const cur = CUR()
   const today = todayStr()
@@ -107,10 +111,12 @@ export function HomeView({
   const hs = hormigaStats(data, cur)
   const pend = pendingRecs(data.settings.recs, txs)
   const saved = data.goals.reduce((a, g) => a + Math.max(0, g.ah), 0)
-  const lastPs = [...data.payslips].sort((a, b) => b.m.localeCompare(a.m))[0]
+  const perHour = netPerHour(data)
+  const ahorroMes = data.settings.perfil?.ahorroMes || 0
+  const ahorrado = Math.max(0, st.bal)
 
   const shownTotal = useCountUp(total)
-  const tip = buildTip({ hs, st, vsPrev, mo, lastPsNeto: lastPs?.neto, rate: st.rate })
+  const tip = buildTip({ hs, st, vsPrev, mo, perHour, rate: st.rate })
 
   return (
     <div className="view-in grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
@@ -192,6 +198,47 @@ export function HomeView({
             </button>
           ))}
         </nav>
+
+        {profileCard ? (
+          <section className="relative flex items-center gap-3 overflow-hidden rounded-3xl bg-card p-4 pr-10 ring-1 ring-glow/40">
+            <Orbi mood="wave" className="w-14 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-heading font-semibold">Personaliza Orbe</p>
+              <p className="text-sm text-muted-foreground">Cuéntame tu sueldo, jornada y metas. Menos de un minuto.</p>
+              <Button size="sm" className="mt-2 rounded-full" onClick={profileCard.onStart}>
+                Empezar
+              </Button>
+            </div>
+            <button
+              type="button"
+              aria-label="Ocultar esta tarjeta"
+              onClick={profileCard.onDismiss}
+              className="absolute top-3 right-3 grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+            >
+              <XIcon className="size-4" />
+            </button>
+          </section>
+        ) : null}
+
+        {ahorroMes ? (
+          <Card>
+            <CardContent className="grid gap-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <Eyebrow>Tu objetivo de ahorro este mes</Eyebrow>
+                <span className="text-xs text-muted-foreground">{pct(Math.min(1, ahorrado / ahorroMes))}</span>
+              </div>
+              <p className="font-heading text-2xl font-semibold tracking-tight tabular-nums">
+                {eur(ahorrado)} <span className="text-base font-normal text-muted-foreground">de {eur(ahorroMes)}</span>
+              </p>
+              <Meter value={ahorrado / ahorroMes} tone={ahorrado >= ahorroMes ? "good" : "gold"} label="Ahorro del mes" />
+              <p className="text-xs text-muted-foreground">
+                {ahorrado >= ahorroMes
+                  ? "¡Objetivo conseguido este mes! 🎉"
+                  : `Te faltan ${eur(ahorroMes - ahorrado)}. Cuenta lo que entra menos lo que sale este mes.`}
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Gasto de la semana */}
         <Card data-tour="gasto7">
@@ -412,18 +459,17 @@ function buildTip({
   st,
   vsPrev,
   mo,
-  lastPsNeto,
+  perHour,
   rate,
 }: {
   hs: ReturnType<typeof hormigaStats>
   st: ReturnType<typeof monthStats>
   vsPrev: number | null
   mo: ReturnType<typeof summarize>
-  lastPsNeto?: number
+  perHour: number
   rate: number | null
 }): { text: string; go?: HomeGo; cta?: string } | null {
   if (hs.total > 0 && hs.year > 0) {
-    const perHour = lastPsNeto && mo.min ? lastPsNeto / (mo.min / 60) : 0
     const hours = perHour ? hs.total / perHour : 0
     return {
       text:

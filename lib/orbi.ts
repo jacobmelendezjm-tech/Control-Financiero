@@ -49,6 +49,17 @@ export function buddyTips(view: string, data: FinanceData): OrbiLine[] {
   const hs = hormigaStats(data, cur)
   const map = dayTotals(data.work.shifts, data.work.cfg)
 
+  const obj = data.settings.perfil?.objetivo
+  if (view === "inicio") {
+    if (obj === "deudas")
+      tips.push({ text: "Para tus deudas: paga primero la que tenga más interés y nunca dejes de pagar el mínimo de las demás.", mood: "think" })
+    if (obj === "controlar")
+      tips.push({ text: "Para gastar menos, pon límite a 2 o 3 categorías en Presupuestos. Yo te aviso cuando te acerques.", mood: "think" })
+    if (obj === "emergencia")
+      tips.push({ text: "Cada euro en tu fondo de emergencia es tranquilidad. Apartarlo el día que cobras es lo que mejor funciona.", mood: "happy" })
+    if (obj === "saber")
+      tips.push({ text: "Apunta todo durante un mes, hasta el café. Al final sabrás exactamente a dónde va tu dinero.", mood: "happy" })
+  }
   if (view === "inicio" || view === "resumen") {
     if (st.inc > 0 && st.rate != null)
       tips.push(

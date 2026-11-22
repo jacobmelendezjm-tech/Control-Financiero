@@ -48,6 +48,7 @@ export function MoreView({
   buddyOn,
   onBuddy,
   onTour,
+  onProfile,
 }: {
   nombre: string
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
@@ -56,6 +57,7 @@ export function MoreView({
   buddyOn: boolean
   onBuddy: (on: boolean) => void
   onTour: () => void
+  onProfile: () => void
 }) {
   const { resolvedTheme } = useTheme()
   const switchTheme = useThemeSwitch()
@@ -95,9 +97,14 @@ export function MoreView({
             </div>
           </div>
           <div className="relative mt-4 grid gap-3">
-            <Button onClick={onTour} className="h-11 rounded-2xl">
-              Ver el tutorial otra vez
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={onProfile} variant="outline" className="h-11 rounded-2xl">
+                Editar mi perfil
+              </Button>
+              <Button onClick={onTour} className="h-11 rounded-2xl">
+                Ver el tutorial
+              </Button>
+            </div>
             <Label className="flex items-center gap-2.5 font-normal">
               <Checkbox checked={buddyOn} onCheckedChange={(v) => onBuddy(!!v)} />
               Mostrar a Orbi flotando en la app
