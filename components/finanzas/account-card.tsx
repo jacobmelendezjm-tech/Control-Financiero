@@ -153,7 +153,9 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
         ) : (
           <form onSubmit={verify} noValidate className="grid gap-2">
             <p className="text-sm">
-              Te he enviado un código a <b>{email}</b>. Escríbelo aquí o pulsa el enlace del correo.
+              Te he enviado un correo a <b>{email}</b>. Ábrelo en este mismo dispositivo y pulsa el enlace para entrar
+              («Sign in»). Si el correo trae un código, también puedes escribirlo aquí.
+              <span className="mt-1 block text-xs text-muted-foreground">Puede tardar un minuto. Mira también en spam.</span>
             </p>
             <div className="flex gap-2">
               <Input
