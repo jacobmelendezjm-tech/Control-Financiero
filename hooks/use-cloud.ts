@@ -1,32 +1,46 @@
 "use client"
 
 import * as React from "react"
-import type { User } from "@supabase/supabase-js"
+import type { RealtimeChannel, SupabaseClient, User } from "@supabase/supabase-js"
 
 import { hasRealData, type FinanceStore } from "@/hooks/use-finance"
+import {
+  SINGLE,
+  SOFT,
+  TABLES,
+  canonical,
+  cloneRows,
+  fromRows,
+  hasCloudData,
+  keyOf,
+  sameRow,
+  toRows,
+  type Row,
+  type RowSet,
+  type Table,
+} from "@/lib/cloud-rows"
 import { loadAll, type FinanceData } from "@/lib/finance"
 import { cloudEnabled, getSupabase } from "@/lib/supabase"
 
 /*
- * Sincronización con la nube (Supabase), con el dispositivo como fuente principal:
- *  - sin sesión, todo sigue funcionando solo en el dispositivo;
- *  - con sesión, cada cambio se sube a los pocos segundos y, al volver a la app,
- *    se traen los cambios hechos en otro dispositivo;
- *  - updated_at de la fila hace de versión: si la nube cambió y aquí también,
- *    se pregunta qué datos conservar (no se pierde nada sin avisar).
+ * Sincronización por filas con Supabase, con el dispositivo como fuente principal:
+ *  - sin sesión, todo funciona solo en el dispositivo;
+ *  - «base» = última versión de cada fila que coincidía con la nube;
+ *  - subir: lo que difiere de la base (altas, cambios y borrados lógicos);
+ *  - bajar: filas con updated_at posterior al cursor; si esa fila no se tocó aquí,
+ *    se aplica (si se tocó aquí, gana la de aquí y se sube después);
+ *  - tiempo real: otro dispositivo cambia algo → se baja al momento.
  */
 
-const META_KEY = "orbe.cloud"
-const TABLE = "finance_data"
+const SYNC_KEY = "orbe.sync.v2"
+const LEGACY_META = "orbe.cloud"
 
 export type CloudStatus = "off" | "syncing" | "synced" | "pending" | "offline" | "error" | "setup"
 
-interface Meta {
+interface SyncState {
   user: string
-  /** updated_at de la nube la última vez que coincidió con el dispositivo ("" si aún no hay fila). */
-  at: string
-  /** Hay cambios en el dispositivo sin subir. */
-  dirty: boolean
+  cursor: string // mayor updated_at visto en la nube
+  base: RowSet
 }
 
 export interface CloudConflict {
@@ -35,50 +49,77 @@ export interface CloudConflict {
   reason: "otra-cuenta" | "dos-dispositivos" | "primera-vez"
 }
 
-function readMeta(): Meta | null {
+function readSync(): SyncState | null {
   try {
-    const raw = localStorage.getItem(META_KEY)
-    return raw ? (JSON.parse(raw) as Meta) : null
+    const raw = localStorage.getItem(SYNC_KEY)
+    return raw ? (JSON.parse(raw) as SyncState) : null
   } catch {
     return null
   }
 }
-function writeMeta(m: Meta | null) {
+function writeSync(s: SyncState | null) {
   try {
-    if (m) localStorage.setItem(META_KEY, JSON.stringify(m))
-    else localStorage.removeItem(META_KEY)
+    if (s) localStorage.setItem(SYNC_KEY, JSON.stringify(s))
+    else localStorage.removeItem(SYNC_KEY)
+    localStorage.removeItem(LEGACY_META)
   } catch {}
 }
 
 /** Mismo formato que la copia completa de Ajustes. */
 export function serialize(d: FinanceData) {
-  return {
-    app: "mis-finanzas",
-    v: 2,
-    settings: d.settings,
-    goals: d.goals,
-    months: d.months,
-    work: d.work,
-    payslips: d.payslips,
-  }
+  return { app: "mis-finanzas", v: 3, settings: d.settings, goals: d.goals, months: d.months, work: d.work, payslips: d.payslips, aportes: d.aportes }
 }
-const fromCloud = (raw: unknown) => loadAll({ ...(raw as Partial<FinanceData>), hasSettings: true })
+
+const maxIso = (a: string, b: string) => (a > b ? a : b)
+
+type Err = { code?: string; message?: string } | null
+
+/** Descarga filas (todas o desde el cursor), incluidos los borrados lógicos. */
+async function fetchRows(sb: SupabaseClient, uid: string, since: string | null) {
+  const rows = TABLES.reduce((acc, t) => ({ ...acc, [t]: [] }), {} as Record<Table, Record<string, unknown>[]>)
+  let cursor = since || ""
+  for (const t of TABLES) {
+    let q = sb.from(t).select("*").eq("user_id", uid)
+    if (since) q = q.gt("updated_at", since)
+    const { data, error } = await q
+    if (error) return { error: error as Err, rows, cursor }
+    rows[t] = data || []
+    for (const r of rows[t]) cursor = maxIso(cursor, String(r.updated_at))
+  }
+  return { error: null as Err, rows, cursor }
+}
+
+/** Filas descargadas → RowSet de las vigentes (sin borradas). */
+function liveSet(rows: Record<Table, Record<string, unknown>[]>): RowSet {
+  const rs = Object.fromEntries(TABLES.map((t) => [t, {}])) as unknown as RowSet
+  for (const t of TABLES)
+    for (const raw of rows[t]) {
+      if (raw.deleted_at) continue
+      if (t === "work_schedules" && raw.activo === false) continue
+      const r = canonical(t, raw)
+      rs[t][keyOf(t, r)] = r
+    }
+  // Días de horario huérfanos (sin horario activo) no cuentan.
+  if (!rs.work_schedules.me) rs.work_schedule_days = {}
+  return rs
+}
 
 export function useCloud(store: FinanceStore) {
   const [user, setUser] = React.useState<User | null>(null)
   const [authReady, setAuthReady] = React.useState(!cloudEnabled)
   const [status, setStatus] = React.useState<CloudStatus>("off")
   const [lastSync, setLastSync] = React.useState<string | null>(null)
-  const [conflict, setConflict] = React.useState<CloudConflict | null>(null)
+  const [conflict, setConflict] = React.useState<(CloudConflict & { server: RowSet; cursor: string }) | null>(null)
 
   const storeRef = React.useRef(store)
   React.useEffect(() => {
     storeRef.current = store
   })
   const userRef = React.useRef<User | null>(null)
-  const ready = React.useRef(false) // ya se hizo la sincronización inicial de esta sesión
-  const applying = React.useRef(false) // el próximo cambio local viene de la nube
+  const ready = React.useRef(false)
+  const applying = React.useRef(false)
   const busy = React.useRef(false)
+  const again = React.useRef(false)
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   /* ---------- sesión ---------- */
@@ -108,115 +149,188 @@ export function useCloud(store: FinanceStore) {
     }
   }, [])
 
-  const apply = React.useCallback((data: FinanceData, at: string, uid: string) => {
-    applying.current = true
-    storeRef.current.replace(data)
-    writeMeta({ user: uid, at, dirty: false })
-    setLastSync(new Date().toISOString())
-    setStatus("synced")
-  }, [])
-
-  const fail = React.useCallback((e: { code?: string; message?: string } | null) => {
+  const fail = React.useCallback((e: Err) => {
     if (e?.code === "PGRST205" || e?.code === "42P01") return setStatus("setup")
     setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error")
   }, [])
 
-  /** Sube los datos del dispositivo. `force` sobrescribe aunque la nube haya cambiado. */
-  const push = React.useCallback(
-    async (force = false) => {
-      const sb = getSupabase()
-      const u = userRef.current
-      if (!sb || !u || !ready.current || busy.current) return
-      if (!navigator.onLine) return setStatus("offline")
-      busy.current = true
-      setStatus("syncing")
-      try {
-        const meta = readMeta()
-        const data = serialize(storeRef.current.real)
-        let at: string | null = null
-        if (meta?.user === u.id && meta.at) {
-          let q = sb.from(TABLE).update({ data }).eq("user_id", u.id)
-          if (!force) q = q.eq("updated_at", meta.at)
-          const { data: rows, error } = await q.select("updated_at")
-          if (error) return fail(error)
-          if (!rows?.length) {
-            // Alguien la cambió desde otro dispositivo: preguntar.
-            const { data: row, error: e2 } = await sb.from(TABLE).select("data, updated_at").eq("user_id", u.id).maybeSingle()
-            if (e2) return fail(e2)
-            if (row) setConflict({ data: fromCloud(row.data), at: row.updated_at, reason: "dos-dispositivos" })
-            setStatus("pending")
-            return
+  const applyLocal = React.useCallback((rs: RowSet) => {
+    applying.current = true
+    storeRef.current.replace(fromRows(rs))
+  }, [])
+
+  /** Sube la diferencia entre `target` y `base`. Devuelve false si algo falló. */
+  const upload = React.useCallback(
+    async (sb: SupabaseClient, uid: string, target: RowSet, base: RowSet) => {
+      const now = new Date().toISOString()
+      for (const t of TABLES) {
+        const changed: Row[] = []
+        const removed: Row[] = []
+        for (const [k, r] of Object.entries(target[t])) if (!sameRow(r, base[t][k])) changed.push(r)
+        for (const [k, r] of Object.entries(base[t])) if (!(k in target[t])) removed.push(r)
+        if (t === "work_schedule_days") {
+          // El horario se rehace: borrar días quitados y escribir los nuevos.
+          for (const r of removed) {
+            const { error } = await sb.from(t).delete().eq("user_id", uid).eq("semana", r.semana as number).eq("dia", r.dia as number)
+            if (error) return error as Err
           }
-          at = rows[0].updated_at
-        } else {
-          const { data: row, error } = await sb.from(TABLE).insert({ user_id: u.id, data }).select("updated_at").single()
-          if (error) {
-            if (error.code === "23505") {
-              const { data: cur } = await sb.from(TABLE).select("data, updated_at").eq("user_id", u.id).maybeSingle()
-              if (cur) setConflict({ data: fromCloud(cur.data), at: cur.updated_at, reason: "dos-dispositivos" })
-              setStatus("pending")
-              return
-            }
-            return fail(error)
+          if (changed.length) {
+            const { error } = await sb.from(t).upsert(changed.map((r) => ({ ...r, user_id: uid })), { onConflict: "user_id,semana,dia" })
+            if (error) return error as Err
           }
-          at = row.updated_at
+          continue
         }
-        writeMeta({ user: u.id, at: at!, dirty: false })
-        setLastSync(new Date().toISOString())
-        setStatus("synced")
-      } finally {
-        busy.current = false
+        const rows: Record<string, unknown>[] = changed.map((r) => ({ ...r, user_id: uid, ...(SOFT.includes(t) ? { deleted_at: null } : {}) }))
+        if (SOFT.includes(t)) for (const r of removed) rows.push({ ...r, user_id: uid, deleted_at: now })
+        if (t === "work_schedules" && removed.length) rows.push({ ...removed[0], user_id: uid, activo: false })
+        if (!rows.length) continue
+        const onConflict = SINGLE.includes(t) ? "user_id" : "user_id,id"
+        // Por tandas para no enviar peticiones enormes.
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await sb.from(t).upsert(rows.slice(i, i + 500), { onConflict })
+          if (error) return error as Err
+        }
       }
+      return null
     },
-    [fail]
+    []
   )
 
-  /** Primera sincronización al iniciar sesión (o al abrir la app con sesión). */
+  /** Bajar cambios y subir los locales (sincronización incremental). */
+  const sync = React.useCallback(async () => {
+    const sb = getSupabase()
+    const u = userRef.current
+    if (!sb || !u || !ready.current) return
+    if (busy.current) {
+      again.current = true
+      return
+    }
+    if (!navigator.onLine) return setStatus("offline")
+    busy.current = true
+    setStatus("syncing")
+    try {
+      const st = readSync()
+      if (!st || st.user !== u.id) return
+      // 1) Bajar lo cambiado desde el cursor.
+      const { error, rows, cursor } = await fetchRows(sb, u.id, st.cursor || null)
+      if (error) return fail(error)
+      const local = toRows(storeRef.current.real)
+      const base = st.base
+      let touched = false
+      for (const t of TABLES)
+        for (const raw of rows[t]) {
+          const r = canonical(t, raw)
+          const k = keyOf(t, r)
+          const gone = !!raw.deleted_at || (t === "work_schedules" && raw.activo === false)
+          const server = gone ? undefined : r
+          const localChanged = !sameRow(local[t][k], base[t][k])
+          if (!localChanged && !sameRow(local[t][k], server)) {
+            if (server) local[t][k] = server
+            else delete local[t][k]
+            touched = true
+          }
+          if (server) base[t][k] = server
+          else delete base[t][k]
+        }
+      if (touched) {
+        if (!local.work_schedules.me) local.work_schedule_days = {}
+        applyLocal(local)
+      }
+      // 2) Subir lo que difiere de la base.
+      const upErr = await upload(sb, u.id, local, base)
+      if (upErr) return fail(upErr)
+      writeSync({ user: u.id, cursor, base: cloneRows(local) })
+      setLastSync(new Date().toISOString())
+      setStatus("synced")
+    } finally {
+      busy.current = false
+      if (again.current) {
+        again.current = false
+        setTimeout(() => void sync(), 300)
+      }
+    }
+  }, [applyLocal, fail, upload])
+
+  /** Primera sincronización de la sesión. */
   const initialSync = React.useCallback(async () => {
     const sb = getSupabase()
     const u = userRef.current
     if (!sb || !u) return
     setStatus("syncing")
-    const { data: row, error } = await sb.from(TABLE).select("data, updated_at").eq("user_id", u.id).maybeSingle()
+    const { error, rows, cursor } = await fetchRows(sb, u.id, null)
     if (error) return fail(error)
-    const meta = readMeta()
-    const local = storeRef.current.real
-    const localHas = hasRealData(local)
-    ready.current = true
-    if (!row) {
-      writeMeta({ user: u.id, at: "", dirty: localHas })
-      if (localHas) await push()
-      else setStatus("synced")
-      return
+    let server = liveSet(rows)
+    const st = readSync()
+    const localData = storeRef.current.real
+    const localHas = hasRealData(localData)
+
+    // Mismo usuario ya sincronizado en este dispositivo: mezcla por filas.
+    if (st?.user === u.id) {
+      ready.current = true
+      writeSync({ ...st, cursor: "" })
+      // Con cursor vacío, sync() trata toda la nube como «cambiada» y mezcla fila a fila.
+      return void sync()
     }
-    if (!localHas) return apply(fromCloud(row.data), row.updated_at, u.id)
-    if (meta?.user === u.id) {
-      if (!meta.dirty) return row.updated_at === meta.at ? setStatus("synced") : apply(fromCloud(row.data), row.updated_at, u.id)
-      if (row.updated_at === meta.at) return push()
-      setConflict({ data: fromCloud(row.data), at: row.updated_at, reason: "dos-dispositivos" })
-      return setStatus("pending")
+
+    // Formato antiguo (un único documento): se migra si las tablas están vacías.
+    let serverHas = hasCloudData(server)
+    if (!serverHas) {
+      const { data: legacy } = await sb.from("finance_data").select("data, updated_at").eq("user_id", u.id).maybeSingle()
+      if (legacy?.data) {
+        server = toRows(loadAll({ ...(legacy.data as Partial<FinanceData>), hasSettings: true }))
+        serverHas = hasCloudData(server)
+        // La base es lo que hay de verdad en las tablas (vacío): así se sube todo.
+        if (!localHas) {
+          ready.current = true
+          applyLocal(server)
+          const upErr = await upload(sb, u.id, server, liveSet(rows))
+          if (upErr) return fail(upErr)
+          writeSync({ user: u.id, cursor, base: cloneRows(server) })
+          setLastSync(new Date().toISOString())
+          return setStatus("synced")
+        }
+        setConflict({ data: fromRows(server), at: legacy.updated_at, reason: "primera-vez", server: liveSet(rows), cursor })
+        return setStatus("pending")
+      }
     }
-    setConflict({ data: fromCloud(row.data), at: row.updated_at, reason: meta?.user ? "otra-cuenta" : "primera-vez" })
+
+    if (!serverHas) {
+      // Nube vacía: se sube lo del dispositivo.
+      ready.current = true
+      const target = toRows(localData)
+      const upErr = await upload(sb, u.id, target, liveSet(rows))
+      if (upErr) return fail(upErr)
+      writeSync({ user: u.id, cursor, base: cloneRows(target) })
+      setLastSync(new Date().toISOString())
+      return setStatus("synced")
+    }
+    if (!localHas) {
+      ready.current = true
+      applyLocal(server)
+      writeSync({ user: u.id, cursor, base: cloneRows(server) })
+      setLastSync(new Date().toISOString())
+      return setStatus("synced")
+    }
+    // Datos en los dos sitios y nunca sincronizados juntos: preguntar.
+    setConflict({ data: fromRows(server), at: cursor, reason: st?.user ? "otra-cuenta" : "primera-vez", server, cursor })
     setStatus("pending")
-  }, [apply, fail, push])
+  }, [applyLocal, fail, sync, upload])
 
   React.useEffect(() => {
     if (!user || !store.loaded || ready.current) return
     void initialSync()
   }, [user, store.loaded, initialSync])
 
-  /* ---------- cambios locales → nube ---------- */
+  /* ---------- cambios locales → nube (con un pequeño retardo) ---------- */
   React.useEffect(() => {
     if (!user || !ready.current) return
     if (applying.current) {
       applying.current = false
       return
     }
-    const meta = readMeta()
-    writeMeta({ user: user.id, at: meta?.user === user.id ? meta.at : "", dirty: true })
     setStatus((s) => (s === "setup" ? s : "pending"))
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => void push(), 1500)
+    timer.current = setTimeout(() => void sync(), 1200)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
@@ -224,41 +338,42 @@ export function useCloud(store: FinanceStore) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.real])
 
-  /* ---------- al volver a la app o recuperar conexión ---------- */
+  /* ---------- al volver a la app, recuperar conexión o cambios en tiempo real ---------- */
   React.useEffect(() => {
     if (!user) return
-    const pull = async () => {
-      const sb = getSupabase()
-      const u = userRef.current
-      if (!sb || !u || !ready.current || busy.current) return
-      const meta = readMeta()
-      if (meta?.dirty) return void push()
-      const { data: row, error } = await sb.from(TABLE).select("data, updated_at").eq("user_id", u.id).maybeSingle()
-      if (error) return fail(error)
-      if (row && row.updated_at !== meta?.at) apply(fromCloud(row.data), row.updated_at, u.id)
-      else setStatus("synced")
-    }
-    const onVis = () => document.visibilityState === "visible" && void pull()
-    const onOnline = () => void pull()
+    const sb = getSupabase()
+    const onVis = () => document.visibilityState === "visible" && void sync()
+    const onOnline = () => void sync()
     const onOffline = () => setStatus("offline")
     document.addEventListener("visibilitychange", onVis)
     window.addEventListener("online", onOnline)
     window.addEventListener("offline", onOffline)
+
+    let channel: RealtimeChannel | null = null
+    let rt: ReturnType<typeof setTimeout> | null = null
+    if (sb) {
+      channel = sb.channel(`orbe-${user.id}`)
+      for (const t of TABLES.filter((x) => x !== "work_schedule_days"))
+        channel.on("postgres_changes", { event: "*", schema: "public", table: t, filter: `user_id=eq.${user.id}` }, () => {
+          if (rt) clearTimeout(rt)
+          rt = setTimeout(() => void sync(), 800)
+        })
+      channel.subscribe()
+    }
     return () => {
       document.removeEventListener("visibilitychange", onVis)
       window.removeEventListener("online", onOnline)
       window.removeEventListener("offline", onOffline)
+      if (rt) clearTimeout(rt)
+      if (channel && sb) void sb.removeChannel(channel)
     }
-  }, [user, apply, fail, push])
+  }, [user, sync])
 
   /* ---------- acciones ---------- */
   const sendCode = async (email: string) => {
     const sb = getSupabase()
     if (!sb) return "La nube no está configurada."
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
-    })
+    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin } })
     if (!error) return null
     if (error.status === 429) return "Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo."
     return "No se ha podido enviar el correo. Revisa la dirección e inténtalo de nuevo."
@@ -271,19 +386,26 @@ export function useCloud(store: FinanceStore) {
   }
   const resolve = async (keep: "nube" | "dispositivo") => {
     const c = conflict
+    const sb = getSupabase()
     const u = userRef.current
-    if (!c || !u) return
+    if (!c || !u || !sb) return
     setConflict(null)
-    if (keep === "nube") return apply(c.data, c.at, u.id)
-    writeMeta({ user: u.id, at: c.at, dirty: true })
-    await push(true)
+    ready.current = true
+    setStatus("syncing")
+    const target = keep === "nube" ? toRows(c.data) : toRows(storeRef.current.real)
+    if (keep === "nube") applyLocal(target)
+    const upErr = await upload(sb, u.id, target, c.server)
+    if (upErr) return fail(upErr)
+    writeSync({ user: u.id, cursor: c.cursor, base: cloneRows(target) })
+    setLastSync(new Date().toISOString())
+    setStatus("synced")
   }
   const signOut = async (wipeLocal: boolean) => {
     const sb = getSupabase()
-    if (readMeta()?.dirty) await push()
+    if (ready.current) await sync()
     await sb?.auth.signOut()
     ready.current = false
-    writeMeta(null)
+    writeSync(null)
     setConflict(null)
     setLastSync(null)
     if (wipeLocal) storeRef.current.wipe()
@@ -295,7 +417,7 @@ export function useCloud(store: FinanceStore) {
     if (error) return "No se ha podido borrar la cuenta. Inténtalo de nuevo."
     await sb.auth.signOut()
     ready.current = false
-    writeMeta(null)
+    writeSync(null)
     setLastSync(null)
     return null
   }
@@ -307,11 +429,11 @@ export function useCloud(store: FinanceStore) {
     // Sin sesión, el estado es siempre «solo en el dispositivo».
     status: user ? status : ("off" as CloudStatus),
     lastSync,
-    conflict,
+    conflict: conflict ? { data: conflict.data, at: conflict.at, reason: conflict.reason } : null,
     sendCode,
     verifyCode,
     resolve,
-    syncNow: () => (ready.current ? push() : initialSync()),
+    syncNow: () => (ready.current ? sync() : initialSync()),
     signOut,
     deleteAccount,
   }

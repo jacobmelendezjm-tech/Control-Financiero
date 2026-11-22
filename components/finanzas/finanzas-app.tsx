@@ -445,6 +445,7 @@ export function FinanzasApp() {
   const deleteGoal = (g: Goal) => {
     update((d) => {
       d.goals = d.goals.filter((x) => x.id !== g.id)
+      d.aportes = d.aportes.filter((a) => a.goal !== g.id)
     })
     close()
     toast("Meta eliminada")
@@ -453,6 +454,8 @@ export function FinanzasApp() {
     update((d) => {
       const x = d.goals.find((y) => y.id === g.id)
       if (x) x.ah += sign * c
+      // Historial de aportaciones (también se guarda en la nube).
+      d.aportes.push({ id: "a" + uid(), goal: g.id, d: todayStr(), c: sign * c })
     })
     close()
     const after = g.ah + sign * c
@@ -549,6 +552,7 @@ export function FinanzasApp() {
         months: real.months,
         work: real.work,
         payslips: real.payslips,
+        aportes: real.aportes,
       },
       null,
       1

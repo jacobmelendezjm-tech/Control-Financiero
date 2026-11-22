@@ -39,6 +39,13 @@ export interface Goal {
   ah: number
   fecha?: string // AAAA-MM
 }
+/** Aportación (o retirada, si es negativa) a una meta de ahorro. */
+export interface Aporte {
+  id: string
+  goal: string
+  d: string // AAAA-MM-DD
+  c: number // céntimos, con signo
+}
 export interface Settings {
   cats: Category[]
   budgets: Record<string, number>
@@ -126,6 +133,7 @@ export interface FinanceData {
   hasSettings: boolean
   work: WorkData
   payslips: Payslip[]
+  aportes: Aporte[]
 }
 
 /* ---------- utilidades ---------- */
@@ -316,6 +324,7 @@ export function loadAll(o: Partial<FinanceData> & { settings?: unknown }): Finan
     hasSettings: !!(o.hasSettings || o.settings),
     work: normalizeWork(o.work),
     payslips: Array.isArray(o.payslips) ? clone(o.payslips).filter((p) => p && /^\d{4}-\d{2}$/.test(p.m)) : [],
+    aportes: Array.isArray(o.aportes) ? clone(o.aportes).filter((a) => a && a.goal && /^\d{4}-\d{2}-\d{2}$/.test(a.d) && a.c) : [],
   }
 }
 export const emptyData = (): FinanceData => ({
@@ -325,6 +334,7 @@ export const emptyData = (): FinanceData => ({
   hasSettings: false,
   work: defaultWork(),
   payslips: [],
+  aportes: [],
 })
 
 /* ---------- gastos hormiga ---------- */
@@ -673,5 +683,5 @@ export function buildDemo(): FinanceData {
   work.cfg.precioHora = 750
   work.cfg.precioExtra = 950
   work.shifts = shifts
-  return { settings: s, goals, months, hasSettings: true, work, payslips: payslips.sort((a, b) => b.m.localeCompare(a.m)) }
+  return { settings: s, goals, months, hasSettings: true, work, payslips: payslips.sort((a, b) => b.m.localeCompare(a.m)), aportes: [] }
 }
