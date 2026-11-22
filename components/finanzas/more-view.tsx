@@ -18,6 +18,8 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
+import { useThemeSwitch } from "@/lib/theme-transition"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -55,7 +57,8 @@ export function MoreView({
   onBuddy: (on: boolean) => void
   onTour: () => void
 }) {
-  const { resolvedTheme, setTheme } = useTheme()
+  const { resolvedTheme } = useTheme()
+  const switchTheme = useThemeSwitch()
   const [name, setName] = React.useState(nombre)
 
   return (
@@ -162,7 +165,7 @@ export function MoreView({
         <Card className="py-1">
           <button
             type="button"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            onClick={(e) => switchTheme(e.currentTarget)}
             className="flex items-center gap-3 px-4 py-3 text-left"
           >
             <span className="grid size-10 place-items-center rounded-xl bg-secondary">

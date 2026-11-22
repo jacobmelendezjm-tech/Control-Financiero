@@ -33,6 +33,7 @@ import { OrbeWordmark } from "@/components/finanzas/logo"
 import { MoreView } from "@/components/finanzas/more-view"
 import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
+import { ThemeToggle } from "@/components/finanzas/theme-toggle"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
 import { WorkView } from "@/components/finanzas/work-view"
 import {
@@ -676,7 +677,10 @@ export function FinanzasApp() {
                 <h1 className="truncate font-heading text-xl font-semibold tracking-tight">{TITLES[view]}</h1>
               </div>
             )}
-            <StatusPill mode={mode} demo={showingDemo} />
+            <div className="flex items-center gap-2">
+              <StatusPill mode={mode} demo={showingDemo} />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 

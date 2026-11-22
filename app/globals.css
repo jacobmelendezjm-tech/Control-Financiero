@@ -269,3 +269,37 @@
   .orbi-float, .orbi-eyes, .orbi-flame, .orbi-wave, .orbi-pulse, .orbit-spin { animation: none; }
   .orbi-pop { animation: none; }
 }
+
+/* ---------- Cambio de tema animado (lib/theme-transition.ts) ---------- */
+/* La View Transition solo usa nuestro círculo (sin el fundido por defecto) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* Mientras dura: sin transiciones CSS, salvo el giro de los iconos sol/luna */
+html.theme-vt *:not(.theme-icon),
+html.theme-vt *::before,
+html.theme-vt *::after {
+  transition: none !important;
+}
+
+/* Respaldo sin View Transitions API: fundido suave de colores */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition-property:
+    background-color, color, border-color, outline-color, text-decoration-color, fill, stroke,
+    box-shadow !important;
+  transition-duration: 0.5s !important;
+  transition-timing-function: ease !important;
+  transition-delay: 0s !important;
+}

@@ -3,6 +3,10 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
+import { useThemeSwitch, visibleThemeToggle } from "@/lib/theme-transition"
+
+const THEME_COLOR = { light: "#e9f6f6", dark: "#172123" } as const
+
 function ThemeProvider({
   children,
   ...props
@@ -12,10 +16,12 @@ function ThemeProvider({
       attribute="class"
       defaultTheme="system"
       enableSystem
-      disableTransitionOnChange
+      // La animación del cambio la gestiona useThemeSwitch (lib/theme-transition)
+      disableTransitionOnChange={false}
       {...props}
     >
       <ThemeHotkey />
+      <ThemeColorSync />
       {children}
     </NextThemesProvider>
   )
@@ -34,8 +40,9 @@ function isTypingTarget(target: EventTarget | null) {
   )
 }
 
+/** Tecla "d": alterna el tema con la misma animación que el botón. */
 function ThemeHotkey() {
-  const { resolvedTheme, setTheme } = useTheme()
+  const switchTheme = useThemeSwitch()
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -55,7 +62,7 @@ function ThemeHotkey() {
         return
       }
 
-      setTheme(resolvedTheme === "dark" ? "light" : "dark")
+      switchTheme(visibleThemeToggle())
     }
 
     window.addEventListener("keydown", onKeyDown)
@@ -63,7 +70,21 @@ function ThemeHotkey() {
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [resolvedTheme, setTheme])
+  }, [switchTheme])
+
+  return null
+}
+
+/** Ajusta el color de la barra del navegador móvil al tema elegido. */
+function ThemeColorSync() {
+  const { resolvedTheme } = useTheme()
+
+  React.useEffect(() => {
+    if (resolvedTheme !== "light" && resolvedTheme !== "dark") return
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((m) => m.setAttribute("content", THEME_COLOR[resolvedTheme]))
+  }, [resolvedTheme])
 
   return null
 }
