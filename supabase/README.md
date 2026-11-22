@@ -11,6 +11,7 @@ Ejecutar en orden en **Supabase → SQL Editor** (todas se pueden repetir sin ro
 |---|---|
 | `20261122000000_orbe_finance_data.sql` | Formato antiguo (un documento JSON por usuario) y `delete_my_account()`. Se mantiene solo para migrar. |
 | `20261123000000_orbe_schema.sql` | Esquema relacional completo (lo que usa la app). |
+| `20261124000000_profiles_email.sql` | Guarda el correo de cada usuario en `profiles.email` (copia automática de `auth.users`). |
 
 ## Tablas
 
@@ -19,7 +20,7 @@ Todas tienen `user_id` (→ `auth.users`, borrado en cascada), `created_at` y `u
 
 | Tabla | Clave | Contenido |
 |---|---|---|
-| `profiles` | `user_id` | Nombre, saldo inicial, umbral de gastos hormiga y respuestas del formulario de bienvenida (cobro, sueldo aproximado, día de cobro, objetivo, ahorro mensual). Se crea sola al registrarse. |
+| `profiles` | `user_id` | Correo (`email`, lo mantiene la base de datos y la app no puede cambiarlo), nombre, saldo inicial, umbral de gastos hormiga y respuestas del formulario de bienvenida (cobro, sueldo aproximado, día de cobro, objetivo, ahorro mensual). Se crea sola al registrarse. |
 | `categories` | `user_id, id` | Categorías de gasto (`g`) o ingreso (`i`), grupo necesidad/deseo, orden y presupuesto mensual. |
 | `recurring` | `user_id, id` | Gastos e ingresos fijos mensuales (día del mes, activo). |
 | `transactions` | `user_id, id` | Movimientos: fecha, tipo, importe, categoría, nota, origen (fijo o nómina) y marca manual de gasto hormiga. |
