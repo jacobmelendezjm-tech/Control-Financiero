@@ -947,7 +947,7 @@ export function FinanzasApp() {
       />
       <div className="lg:pl-[260px]">
       <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
-        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/55 px-4 pb-2 backdrop-blur-2xl lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
+        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/55 px-4 pb-2 backdrop-blur-2xl lg:bg-background/80 lg:backdrop-blur-md lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
           <div className="flex h-11 items-center justify-between gap-3">
             {view === "inicio" ? (
               <>
@@ -1273,7 +1273,7 @@ function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; o
   return (
     <aside
       aria-label="Secciones"
-      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/55 px-4 pt-6 pb-5 backdrop-blur-2xl lg:flex"
+      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/80 px-4 pt-6 pb-5 lg:flex"
     >
       <div className="px-2">
         <OrbeWordmark />

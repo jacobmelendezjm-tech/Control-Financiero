@@ -323,6 +323,10 @@ html.lenis body {
 .lenis.lenis-stopped {
   overflow: clip;
 }
+/* Sin Lenis (escritorio): mismo bloqueo mientras hay una hoja o el tutorial abiertos. */
+html.scroll-locked {
+  overflow: clip;
+}
 
 /* ---------- Esqueletos de carga ---------- */
 @keyframes skeleton-shimmer {

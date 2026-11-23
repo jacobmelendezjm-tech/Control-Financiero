@@ -164,6 +164,7 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - Lenis pasa de una duración fija (se reiniciaba con cada giro de rueda y daba tirones) a `lerp`, y con `allowNestedScroll` las zonas con scroll propio (desplegables, tablas, diálogos) se mueven ellas en vez de la página, que era lo que hacía parecer que el scroll se quedaba pegado.
 - El fondo animado de pantalla completa se dibuja a media resolución y a ~30 fps (`SilkShader lite`), y en escritorio las tarjetas ya no desenfocan el fondo (`lg:backdrop-blur-none`): menos trabajo para la GPU mientras se desplaza.
+- Seguía a tirones: en escritorio se quita Lenis y se usa el scroll suave nativo de Chrome, que no depende de JavaScript. Medido en Chrome con la gráfica real (Radeon 780M integrada, la que usa Chrome en el portátil): 144 fps sin fotogramas largos. La cabecera desenfoca menos y el menú lateral ya no desenfoca.
 
 ---
 

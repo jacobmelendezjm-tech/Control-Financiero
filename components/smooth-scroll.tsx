@@ -15,10 +15,13 @@ declare global {
  *    animación, así no da tirones ni sigue deslizando de más con ratón o panel táctil.
  *  - `allowNestedScroll`: las zonas con su propio scroll (desplegables, tablas, diálogos) se
  *    desplazan ellas en vez de mover la página (antes parecía que el scroll se quedaba pegado).
+ *  - Con ratón o panel táctil (escritorio) NO se usa Lenis: el scroll suave nativo de Chrome va en
+ *    su propio hilo y no da tirones aunque la página esté ocupada; Lenis lo mueve desde JavaScript.
  */
 export function SmoothScroll({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) return
     const instance = new Lenis({
       lerp: 0.12,
       smoothWheel: true,

@@ -2,13 +2,15 @@
 export function scrollToY(top: number, immediate = false) {
   const lenis = typeof window !== "undefined" ? window.__lenis : null
   if (lenis) lenis.scrollTo(top, { immediate, force: true, duration: 0.8 })
-  else window.scrollTo({ top, behavior: immediate ? "auto" : "smooth" })
+  else window.scrollTo({ top, behavior: immediate ? "instant" : "smooth" })
 }
 
 /** Pausa el smooth scroll mientras hay un diálogo abierto. */
 export function setScrollLocked(locked: boolean) {
-  const lenis = typeof window !== "undefined" ? window.__lenis : null
-  if (!lenis) return
-  if (locked) lenis.stop()
-  else lenis.start()
+  if (typeof window === "undefined") return
+  const lenis = window.__lenis
+  if (lenis) {
+    if (locked) lenis.stop()
+    else lenis.start()
+  } else document.documentElement.classList.toggle("scroll-locked", locked)
 }
