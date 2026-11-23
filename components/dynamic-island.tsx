@@ -37,7 +37,7 @@ export function DynamicIsland({ busy }: { busy: boolean }) {
   const Icon = msg?.tone === "success" ? CheckIcon : msg?.tone === "error" ? TriangleAlertIcon : InfoIcon
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[95] flex justify-center px-3">
+    <div className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[95] flex justify-center px-3 lg:top-[4.75rem] lg:pl-[260px]">
       <div
         role="status"
         aria-live="polite"

@@ -195,6 +195,10 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - En escritorio desaparece el botón ☰ (era un segundo menú lateral redundante). La barra lateral fija gana **Modo oscuro/claro** y **Ayuda**; cuenta, moneda, recordatorios y Orbi están en «Cuenta y preferencias». En móvil y tablet el ☰ sigue igual.
 
+### Cabecera de escritorio tipo «isla dinámica»
+
+- En escritorio la cabecera es una píldora oscura flotante y centrada (título de la sección y la nube), en vez de una franja que no llegaba a los bordes. Los avisos de la isla dinámica bajan justo debajo de ella. En móvil, sin cambios.
+
 ---
 
 ## Plantilla para nuevas entradas

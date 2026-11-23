@@ -970,12 +970,13 @@ export function FinanzasApp() {
       />
       <div className="lg:pl-[260px]">
       <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
-        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/55 px-4 pb-2 backdrop-blur-2xl lg:bg-background/80 lg:backdrop-blur-md lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
-          <div className="flex h-11 items-center justify-between gap-3">
+        {/* En escritorio, la cabecera es una «isla dinámica»: una píldora oscura flotante y centrada. */}
+        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/55 px-4 pb-2 backdrop-blur-2xl lg:pointer-events-none lg:mx-0 lg:mb-6 lg:bg-transparent lg:px-0 lg:pt-4 lg:pb-0 lg:backdrop-blur-none">
+          <div className="flex h-11 items-center justify-between gap-3 lg:pointer-events-auto lg:mx-auto lg:h-12 lg:w-[min(520px,100%)] lg:rounded-full lg:bg-black/85 lg:pr-1.5 lg:pl-6 lg:text-white lg:shadow-[0_18px_40px_-12px_rgb(0_0_0/0.55)] lg:ring-1 lg:ring-white/12 lg:backdrop-blur-2xl">
             {view === "inicio" ? (
               <>
                 <OrbeWordmark className="lg:hidden" />
-                <h1 className="hidden font-heading text-2xl font-semibold tracking-tight lg:block">Inicio</h1>
+                <h1 className="hidden font-heading text-lg font-semibold tracking-tight lg:block">Inicio</h1>
               </>
             ) : (
               <div className="flex min-w-0 items-center gap-1">
@@ -984,13 +985,18 @@ export function FinanzasApp() {
                     <ChevronLeftIcon className="size-5" />
                   </Button>
                 ) : null}
-                <h1 className="truncate font-heading text-xl font-semibold tracking-tight lg:text-2xl">{TITLES[view]}</h1>
+                <h1 className="truncate font-heading text-xl font-semibold tracking-tight lg:text-lg">{TITLES[view]}</h1>
               </div>
             )}
             <div className="flex items-center gap-1">
               {memory ? <span className="rounded-full bg-bad/12 px-2 py-1 text-[11px] font-semibold text-bad">Sin guardar</span> : null}
               {cloud.enabled ? (
-                <button type="button" onClick={() => goSection("cuenta")} className="grid size-10 place-items-center rounded-full hover:bg-muted">
+                <button
+                  type="button"
+                  aria-label="Tu cuenta y la nube"
+                  onClick={() => goSection("cuenta")}
+                  className="grid size-10 place-items-center rounded-full hover:bg-muted lg:size-9 lg:hover:bg-white/12"
+                >
                   <CloudBadge status={cloud.user ? cloud.status : null} />
                 </button>
               ) : null}
