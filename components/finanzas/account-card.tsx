@@ -109,13 +109,18 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
               </p>
             </div>
           </div>
+          {(s === "error" || s === "setup") && cloud.lastError ? (
+            <p role="alert" className="rounded-xl bg-bad/10 px-3 py-2 text-xs text-bad">
+              No se pudo guardar en la nube: {cloud.lastError}
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             Tus datos se guardan en este dispositivo y una copia en la nube. Entra con este correo en otro móvil u ordenador y los
             tendrás allí.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => void cloud.syncNow()} disabled={s === "syncing"}>
-              <RefreshCwIcon /> Sincronizar ahora
+              <RefreshCwIcon /> {s === "error" || s === "setup" ? "Reintentar" : "Sincronizar ahora"}
             </Button>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => setAsk("logout")}>
               Cerrar sesión

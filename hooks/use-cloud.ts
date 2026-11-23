@@ -110,6 +110,10 @@ export function useCloud(store: FinanceStore) {
   const [status, setStatus] = React.useState<CloudStatus>("off")
   const [lastSync, setLastSync] = React.useState<string | null>(null)
   const [conflict, setConflict] = React.useState<(CloudConflict & { server: RowSet; cursor: string }) | null>(null)
+  /** Motivo del último fallo, para mostrarlo en la cuenta. */
+  const [lastError, setLastError] = React.useState<string | null>(null)
+  const initRunning = React.useRef(false)
+  const initialRef = React.useRef<() => Promise<void>>(async () => {})
 
   const storeRef = React.useRef(store)
   React.useEffect(() => {
@@ -150,9 +154,13 @@ export function useCloud(store: FinanceStore) {
   }, [])
 
   const fail = React.useCallback((e: Err) => {
+    const msg = [e?.code, e?.message].filter(Boolean).join(" · ") || "error desconocido"
+    setLastError(msg)
+    if (typeof console !== "undefined") console.warn("[Orbe nube]", msg)
     if (e?.code === "PGRST205" || e?.code === "42P01") return setStatus("setup")
     setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error")
   }, [])
+  const crash = (e: unknown): Err => ({ message: e instanceof Error ? e.message : String(e) })
 
   const applyLocal = React.useCallback((rs: RowSet) => {
     applying.current = true
@@ -213,7 +221,12 @@ export function useCloud(store: FinanceStore) {
     setStatus("syncing")
     try {
       const st = readSync()
-      if (!st || st.user !== u.id) return
+      if (!st || st.user !== u.id) {
+        // Sin punto de partida (p. ej. falló la primera subida): empezar de nuevo.
+        ready.current = false
+        setTimeout(() => void initialRef.current(), 0)
+        return
+      }
       // 1) Bajar lo cambiado desde el cursor.
       const { error, rows, cursor } = await fetchRows(sb, u.id, st.cursor || null)
       if (error) return fail(error)
@@ -258,7 +271,10 @@ export function useCloud(store: FinanceStore) {
       if (upErr) return fail(upErr)
       writeSync({ user: u.id, cursor, base: cloneRows(local) })
       setLastSync(new Date().toISOString())
+      setLastError(null)
       setStatus("synced")
+    } catch (e) {
+      fail(crash(e))
     } finally {
       busy.current = false
       if (again.current) {
@@ -269,7 +285,7 @@ export function useCloud(store: FinanceStore) {
   }, [applyLocal, fail, upload])
 
   /** Primera sincronización de la sesión. */
-  const initialSync = React.useCallback(async () => {
+  async function initialSyncInner() {
     const sb = getSupabase()
     const u = userRef.current
     if (!sb || !u) return
@@ -301,9 +317,13 @@ export function useCloud(store: FinanceStore) {
           ready.current = true
           applyLocal(server)
           const upErr = await upload(sb, u.id, server, liveSet(rows))
-          if (upErr) return fail(upErr)
+          if (upErr) {
+            ready.current = false
+            return fail(upErr)
+          }
           writeSync({ user: u.id, cursor, base: cloneRows(server) })
           setLastSync(new Date().toISOString())
+          setLastError(null)
           return setStatus("synced")
         }
         setConflict({ data: fromRows(server), at: legacy.updated_at, reason: "primera-vez", server: liveSet(rows), cursor })
@@ -316,9 +336,13 @@ export function useCloud(store: FinanceStore) {
       ready.current = true
       const target = toRows(localData)
       const upErr = await upload(sb, u.id, target, liveSet(rows))
-      if (upErr) return fail(upErr)
+      if (upErr) {
+        ready.current = false
+        return fail(upErr)
+      }
       writeSync({ user: u.id, cursor, base: cloneRows(target) })
       setLastSync(new Date().toISOString())
+      setLastError(null)
       return setStatus("synced")
     }
     if (!localHas) {
@@ -326,12 +350,44 @@ export function useCloud(store: FinanceStore) {
       applyLocal(server)
       writeSync({ user: u.id, cursor, base: cloneRows(server) })
       setLastSync(new Date().toISOString())
+      setLastError(null)
       return setStatus("synced")
     }
     // Datos en los dos sitios y nunca sincronizados juntos: preguntar.
     setConflict({ data: fromRows(server), at: cursor, reason: st?.user ? "otra-cuenta" : "primera-vez", server, cursor })
     setStatus("pending")
-  }, [applyLocal, fail, sync, upload])
+  }
+  const initialSync = React.useCallback(async () => {
+    if (initRunning.current) return
+    initRunning.current = true
+    try {
+      await initialSyncInner()
+    } catch (e) {
+      ready.current = false
+      fail(crash(e))
+    } finally {
+      initRunning.current = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fail])
+
+  React.useEffect(() => {
+    initialRef.current = initialSync
+  })
+
+  /** Sincronizar ahora: la inicial si aún no se pudo, si no la incremental. */
+  const kick = React.useCallback(() => (ready.current ? sync() : initialSync()), [sync, initialSync])
+
+  // Vigilante: si algo se queda «sincronizando» más de 25 s, se marca como fallo.
+  React.useEffect(() => {
+    if (status !== "syncing") return
+    const t = setTimeout(() => {
+      busy.current = false
+      initRunning.current = false
+      fail({ message: "La sincronización ha tardado demasiado. Revisa tu conexión y pulsa Reintentar." })
+    }, 25000)
+    return () => clearTimeout(t)
+  }, [status, fail])
 
   React.useEffect(() => {
     if (!user || !store.loaded || ready.current) return
@@ -340,14 +396,14 @@ export function useCloud(store: FinanceStore) {
 
   /* ---------- cambios locales → nube (con un pequeño retardo) ---------- */
   React.useEffect(() => {
-    if (!user || !ready.current) return
+    if (!user) return
     if (applying.current) {
       applying.current = false
       return
     }
     setStatus((s) => (s === "setup" ? s : "pending"))
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => void sync(), 1200)
+    timer.current = setTimeout(() => void kick(), 1200)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
@@ -359,8 +415,8 @@ export function useCloud(store: FinanceStore) {
   React.useEffect(() => {
     if (!user) return
     const sb = getSupabase()
-    const onVis = () => document.visibilityState === "visible" && void sync()
-    const onOnline = () => void sync()
+    const onVis = () => document.visibilityState === "visible" && void kick()
+    const onOnline = () => void kick()
     const onOffline = () => setStatus("offline")
     document.addEventListener("visibilitychange", onVis)
     window.addEventListener("online", onOnline)
@@ -373,7 +429,7 @@ export function useCloud(store: FinanceStore) {
       for (const t of TABLES.filter((x) => x !== "work_schedule_days"))
         channel.on("postgres_changes", { event: "*", schema: "public", table: t, filter: `user_id=eq.${user.id}` }, () => {
           if (rt) clearTimeout(rt)
-          rt = setTimeout(() => void sync(), 800)
+          rt = setTimeout(() => void kick(), 800)
         })
       channel.subscribe()
     }
@@ -384,7 +440,7 @@ export function useCloud(store: FinanceStore) {
       if (rt) clearTimeout(rt)
       if (channel && sb) void sb.removeChannel(channel)
     }
-  }, [user, sync])
+  }, [user, kick])
 
   /* ---------- el nombre de la cuenta sigue al del perfil (lo usan los correos) ---------- */
   const nombre = store.real.settings.nombre
@@ -464,7 +520,8 @@ export function useCloud(store: FinanceStore) {
     sendCode,
     verifyCode,
     resolve,
-    syncNow: () => (ready.current ? sync() : initialSync()),
+    syncNow: kick,
+    lastError,
     signOut,
     deleteAccount,
   }
