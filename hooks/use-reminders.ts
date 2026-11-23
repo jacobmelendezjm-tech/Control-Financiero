@@ -157,7 +157,7 @@ export function useReminders(data: FinanceData, demo: boolean) {
       await reg.showNotification("Orbe", {
         body: "¡Así te avisaré! Tus recordatorios están activados 🛰️",
         icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
         tag: "orbe-prueba",
         data: { url: "/" },
       })

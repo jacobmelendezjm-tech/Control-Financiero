@@ -1,6 +1,6 @@
 /* Orbe: service worker para abrir la app sin conexión.
    Los datos viven en el navegador (localStorage); aquí solo se guarda la app. */
-const CACHE = "orbe-v3"
+const CACHE = "orbe-v4"
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/orbe.svg"]
 
 self.addEventListener("install", (e) => {
@@ -67,7 +67,7 @@ self.addEventListener("push", (e) => {
     self.registration.showNotification(d.title || "Orbe", {
       body: d.body || "",
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
       tag: d.tag || "orbe",
       renotify: false,
       data: { url: d.url || "/" },
