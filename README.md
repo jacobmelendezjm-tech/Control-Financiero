@@ -65,3 +65,14 @@ La lista completa, con prioridad y esfuerzo, está en [`Mejoras_Futuro.md`](Mejo
 - [`supabase/README.md`](supabase/README.md): base de datos, seguridad y sincronización.
 - [`supabase/templates/README.md`](supabase/templates/README.md): correos de inicio de sesión.
 - [`AGENTS.md`](AGENTS.md): instrucciones para asistentes.
+
+## Textos legales
+
+- [`/aviso-legal`](app/aviso-legal/page.tsx): titular, derechos de autor, responsabilidad y ley aplicable.
+- [`/terminos`](app/terminos/page.tsx): condiciones de uso (gratuita, edad mínima 14 años, cálculos orientativos, uso prohibido, licencia personal).
+- [`/privacidad`](app/privacidad/page.tsx): RGPD, proveedores (Supabase, Vercel, Brevo, servicio de notificaciones), derechos y cookies técnicas.
+- Titular, contacto y fecha de actualización en [`lib/legal.ts`](lib/legal.ts).
+
+## Licencia
+
+© 2026 Jacob Meléndez. **Todos los derechos reservados.** Software privado: no se concede ninguna licencia de uso, copia, modificación ni distribución. Consulta [`LICENSE`](LICENSE).

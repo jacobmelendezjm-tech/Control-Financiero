@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
+  "author": "Jacob Meléndez",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

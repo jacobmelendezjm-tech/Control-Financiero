@@ -40,3 +40,6 @@ next-env.d.ts
 
 # secretos locales de Supabase (claves VAPID y secreto del cron)
 /supabase/private/
+
+# campaña de vídeo (pesada y privada, fuera del repositorio)
+/video Orbi/

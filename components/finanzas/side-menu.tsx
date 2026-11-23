@@ -15,7 +15,6 @@ import {
   ListIcon,
   MoonIcon,
   PiggyBankIcon,
-  ShieldIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   SunIcon,
@@ -29,6 +28,7 @@ import { CloudBadge } from "@/components/finanzas/cloud-badge"
 import { OrbeWordmark } from "@/components/finanzas/logo"
 import type { CloudStatus } from "@/hooks/use-cloud"
 import { useThemeSwitch } from "@/lib/theme-transition"
+import { LegalLinks } from "@/components/legal-links"
 import { cn } from "@/lib/utils"
 
 type Go =
@@ -183,13 +183,11 @@ export function SideMenu({
           </nav>
 
           <div className="flex items-center gap-4 border-t px-5 py-3 text-sm text-muted-foreground">
-            <a href="/privacidad" className="flex items-center gap-1.5 hover:text-foreground">
-              <ShieldIcon className="size-4" /> Privacidad
-            </a>
             <a href="mailto:soporte.moneycare.orbe@gmail.com" className="flex items-center gap-1.5 hover:text-foreground">
               <LifeBuoyIcon className="size-4" /> Ayuda
             </a>
           </div>
+          <LegalLinks className="px-5 pb-4" />
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

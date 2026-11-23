@@ -141,6 +141,21 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - El formulario vuelve a salir una vez a quien lo hizo sin intereses (clave `orbe.onboard2`). Si ya elegiste «Continuar sin cuenta», no se vuelve a preguntar por la cuenta.
 - Base de datos: `20261128000000_profiles_intereses.sql` (pendiente de ejecutar).
 
+### Campaña audiovisual «Orbe con Orbi» (carpeta `video Orbi/`)
+
+- Seis vídeos con Orbi de protagonista: presentación oficial, tutorial, anuncio de horas extra, vertical de gastos hormiga, funcionalidades y pieza de marca, con adaptaciones 16:9, 9:16 y 1:1 (12 MP4 en total), subtítulos SRT, miniaturas, guiones y storyboards.
+- Hechos con HyperFrames a partir de capturas reales de la app, el shader Silk y el SVG original de Orbi; voz local con Kokoro (em_alex) y música original «Órbita» compuesta en código.
+- Todo se regenera desde `video Orbi/07_Proyectos_Editables/motor/` (ver su README). La llamada a la acción es «Pruébala gratis» + la web: la app aún no está en Google Play.
+
+### Textos legales y derechos de autor
+
+- Nuevas páginas **Aviso legal** (`/aviso-legal`) y **Términos de uso** (`/terminos`); **Privacidad y cookies** reescrita: responsable, proveedores (Supabase, Vercel, Brevo, servicio de notificaciones), transferencias, edad mínima de 14 años, derechos y cookies técnicas.
+- Corregido un error de la política anterior: decía que sin cuenta nada sale del móvil, pero los recordatorios guardan su texto en el servidor.
+- Aviso de que los cálculos (nóminas, IRPF, horas extra) son orientativos y no son asesoramiento.
+- «© 2026 Jacob Meléndez. Todos los derechos reservados.» en el menú, en Más y en las páginas legales; aceptación de términos y privacidad en el paso de la cuenta.
+- `LICENSE` privativo, `"license": "UNLICENSED"` en `package.json` y metadatos de autoría.
+- `video Orbi/` fuera del repositorio (`.gitignore`) y del lint.
+
 ---
 
 ## Plantilla para nuevas entradas

@@ -20,6 +20,7 @@ import { RemindersCard } from "@/components/finanzas/reminders-card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Eyebrow } from "@/components/finanzas/kit"
+import { LegalLinks } from "@/components/legal-links"
 
 export type MoreGo = "movimientos" | "resumen" | "presupuesto" | "metas" | "hormiga" | "nominas" | "ajustes"
 
@@ -150,6 +151,7 @@ export function MoreView({
             Privacidad
           </a>
         </p>
+        <LegalLinks className="justify-items-center px-1 text-center [&_nav]:justify-center" />
       </div>
     </div>
   )

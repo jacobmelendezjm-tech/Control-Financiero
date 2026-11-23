@@ -58,7 +58,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 ### Rutas (`app/`)
 
 - `page.tsx` → `FinanzasApp` (toda la app es una página; las secciones van por `#hash` para que el botón atrás funcione): `#inicio`, `#resumen` (Análisis), `#movimientos`, `#presupuesto`, `#metas`, `#hormiga`, `#trabajo`, `#nominas`, `#mas`, `#ajustes`. `#nuevo-gasto` abre el formulario (acceso directo del manifiesto).
-- `privacidad/page.tsx`: privacidad (RGPD), con contacto de soporte.
+- `privacidad/page.tsx` (privacidad y cookies, RGPD), `aviso-legal/page.tsx`, `terminos/page.tsx`: usan `components/legal-page.tsx`; titular, contacto y fecha en `lib/legal.ts`. `components/legal-links.tsx` (enlaces + copyright) va en el menú lateral, en Más y al pie de las páginas legales.
 - `layout.tsx` (fuentes, metadatos, `ThemeProvider`, `SmoothScroll`, `Toaster`), `loading.tsx` (esqueleto), `manifest.ts`, `icon.svg`, `apple-icon.png`, `globals.css`.
 
 ### Datos y lógica (`lib/`, `hooks/`)
@@ -140,3 +140,13 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - `Perfil.intereses` (`Interes[]`, en el orden elegido; `cleanIntereses`). Perfil completo = `done` + intereses (`profileComplete` en `finanzas-app.tsx`); clave de «luego» `orbe.onboard2`.
 - Inicio (`home-view.tsx`): accesos rápidos por intereses; tarjeta de Trabajo solo si `works`.
 - El paso «cuenta» del formulario no sale si `orbe.cuenta = local` (salvo inicio de sesión a medias).
+
+## Campaña de vídeo (video Orbi/)
+
+- Fuente única: `video Orbi/07_Proyectos_Editables/motor/campaign.mjs` → `voices.mjs` (Kokoro, necesita Python con kokoro-onnx) → `build.mjs` (proyectos HyperFrames) → `render.mjs` → `docs.mjs` + `readme.mjs`.
+- Pesa unos 600 MB: está en `.gitignore` y en los ignorados de ESLint; nunca se sube al repositorio.
+
+## Legal y derechos de autor
+
+- Software privativo: `LICENSE` («Todos los derechos reservados»), `package.json` con `UNLICENSED`. Titular: Jacob Meléndez (constante `TITULAR` en `lib/legal.ts`).
+- Si cambian los datos que salen del dispositivo (nuevo proveedor, analítica, pagos), actualiza `/privacidad` y la fecha `ACTUALIZADO`. Si un día hay ingresos o publicidad, el aviso legal necesitará NIF y domicilio (LSSI art. 10).

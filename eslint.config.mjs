@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Campaña de vídeo (fuera del repositorio).
+    "video Orbi/**",
   ]),
 ]);
 

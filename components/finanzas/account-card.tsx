@@ -232,10 +232,15 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
         <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <ShieldCheckIcon className="mt-px size-3.5 shrink-0" />
           <span>
-            Solo tú puedes ver tus datos. Puedes borrar tu cuenta cuando quieras.{" "}
-            <a href="/privacidad" className="underline underline-offset-2">
+            Solo tú puedes ver tus datos. Puedes borrar tu cuenta cuando quieras. Al crear la cuenta aceptas los{" "}
+            <a href="/terminos" target="_blank" rel="noopener" className="underline underline-offset-2">
+              Términos de uso
+            </a>{" "}
+            y la{" "}
+            <a href="/privacidad" target="_blank" rel="noopener" className="underline underline-offset-2">
               Privacidad
             </a>
+            .
           </span>
         </p>
       </CardContent>

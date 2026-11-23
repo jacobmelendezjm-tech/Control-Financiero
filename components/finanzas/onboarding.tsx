@@ -560,6 +560,18 @@ export function Onboarding({
                   ))}
                 </div>
 
+                <p className="text-xs text-muted-foreground">
+                  Al continuar aceptas los{" "}
+                  <a href="/terminos" target="_blank" rel="noopener" className="underline underline-offset-2">
+                    Términos de uso
+                  </a>{" "}
+                  y la{" "}
+                  <a href="/privacidad" target="_blank" rel="noopener" className="underline underline-offset-2">
+                    Política de privacidad
+                  </a>
+                  .
+                </p>
+
                 {modo === "local" ? (
                   <div role="note" className="flex gap-2.5 rounded-2xl bg-warn/15 px-3.5 py-3 text-sm ring-1 ring-warn/40">
                     <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-[#8a5a00] dark:text-warn" />

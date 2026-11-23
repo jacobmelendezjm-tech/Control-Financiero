@@ -5,6 +5,7 @@ import "./globals.css"
 import { KeyboardAware } from "@/components/keyboard-aware"
 import { SmoothScroll } from "@/components/smooth-scroll"
 import { ThemeProvider } from "@/components/theme-provider"
+import { COPYRIGHT, TITULAR } from "@/lib/legal"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -16,6 +17,10 @@ export const metadata: Metadata = {
   title: "Orbe · Control financiero",
   description: "Ingresos, gastos, gastos hormiga, ahorro, nóminas y horas de trabajo en tu móvil.",
   applicationName: "Orbe",
+  authors: [{ name: TITULAR }],
+  creator: TITULAR,
+  publisher: TITULAR,
+  other: { copyright: COPYRIGHT },
   appleWebApp: { capable: true, title: "Orbe", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 }
