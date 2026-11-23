@@ -12,7 +12,9 @@ import {
   KIND_LABEL,
   calendarGrid,
   cycleWeekMinutes,
+  hasAnySchedule,
   planFor,
+  weekStart,
   planMinutes,
   scheduleOn,
   weekIndex,
@@ -25,6 +27,73 @@ import {
   summarize,
 } from "@/lib/work"
 import { cn } from "@/lib/utils"
+import { shiftLabel } from "@/components/finanzas/schedule-dialog"
+import { addDays, type DayTotal } from "@/lib/work"
+import type { WorkCfg } from "@/lib/finance"
+
+/** Tu semana de un vistazo: toca para poner el horario. */
+function WeekStrip({
+  cfg,
+  map,
+  today,
+  onEdit,
+  onRotate,
+}: {
+  cfg: WorkCfg
+  map: Record<string, DayTotal>
+  today: string
+  onEdit: (monday?: string) => void
+  onRotate: () => void
+}) {
+  const [off, setOff] = React.useState(0)
+  const monday = addDays(weekStart(today), 7 * off)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+  return (
+    <Card className="gap-2 py-3">
+      <div className="flex items-center justify-between px-3">
+        <Button variant="ghost" size="icon" aria-label="Semana anterior" onClick={() => setOff(off - 1)}>
+          ‹
+        </Button>
+        <span className="text-sm font-semibold">{off === 0 ? "Esta semana" : off === 1 ? "Semana que viene" : off === -1 ? "Semana pasada" : `Semana del ${+monday.slice(8)}/${+monday.slice(5, 7)}`}</span>
+        <Button variant="ghost" size="icon" aria-label="Semana siguiente" onClick={() => setOff(off + 1)}>
+          ›
+        </Button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 px-2">
+        {days.map((d, i) => {
+          const t = map[d]
+          const p = planFor(d, cfg)
+          const done = !!t?.min
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => onEdit(monday)}
+              aria-label={`${WEEKDAYS[i]} ${+d.slice(8)}: ${done ? "fichado" : p ? shiftLabel(p) : "libre"}`}
+              className={cn(
+                "grid min-h-16 content-start justify-items-center gap-0.5 rounded-xl px-0.5 py-1.5 transition-colors active:scale-95",
+                done ? "bg-primary/85 text-primary-foreground" : p ? "bg-primary/12" : "bg-muted/60 text-muted-foreground",
+                d === today && "ring-2 ring-primary"
+              )}
+            >
+              <span className="text-[11px] font-semibold">{WEEKDAYS[i]}</span>
+              <span className="text-sm font-semibold leading-none">{+d.slice(8)}</span>
+              <span className="text-[9.5px] leading-tight tabular-nums">{done ? "✓" : p ? shiftLabel(p).replace("–", "-") : "—"}</span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex items-center justify-between px-4 text-xs">
+        <button type="button" className="font-medium text-primary" onClick={() => onEdit(monday)}>
+          Poner horario
+        </button>
+        <button type="button" className="text-muted-foreground underline-offset-2 hover:underline" onClick={onRotate}>
+          ¿Se repite? Horario rotativo
+        </button>
+      </div>
+    </Card>
+  )
+}
 
 export type WorkTab = "jornadas" | "nominas"
 
@@ -37,6 +106,7 @@ export function WorkView({
   onClock,
   onCfg,
   onSchedule,
+  onWeekPlan,
   onFill,
   onNewPayslip,
   onEditPayslip,
@@ -49,6 +119,7 @@ export function WorkView({
   onClock: () => void
   onCfg: () => void
   onSchedule: () => void
+  onWeekPlan: (monday?: string) => void
   onFill: () => void
   onNewPayslip: () => void
   onEditPayslip: (p: Payslip) => void
@@ -79,7 +150,7 @@ export function WorkView({
         ))}
       </div>
       {tab === "jornadas" ? (
-        <Jornadas data={data} month={month} onDay={onDay} onClock={onClock} onCfg={onCfg} onSchedule={onSchedule} onFill={onFill} />
+        <Jornadas data={data} month={month} onDay={onDay} onClock={onClock} onCfg={onCfg} onSchedule={onSchedule} onWeekPlan={onWeekPlan} onFill={onFill} />
       ) : (
         <Nominas data={data} month={month} onNew={onNewPayslip} onEdit={onEditPayslip} />
       )}
@@ -94,6 +165,7 @@ function Jornadas({
   onClock,
   onCfg,
   onSchedule,
+  onWeekPlan,
   onFill,
 }: {
   data: FinanceData
@@ -102,6 +174,7 @@ function Jornadas({
   onClock: () => void
   onCfg: () => void
   onSchedule: () => void
+  onWeekPlan: (monday?: string) => void
   onFill: () => void
 }) {
   const { cfg } = data.work
@@ -113,6 +186,9 @@ function Jornadas({
   const maxMin = Math.max(Math.round(cfg.horasDia * 60), ...Object.values(map).map((t) => t.min))
   const clockedToday = !!map[today]
   const hasSchedule = scheduleOn(cfg)
+  const hasAny = hasAnySchedule(cfg)
+  const thisMonday = weekStart(today)
+  const planned = Object.keys(cfg.weekPlans || {}).filter((k) => k >= thisMonday).sort()
   const todayPlan = planFor(today, cfg)
   const clockLabel = clockedToday
     ? "Añadir otro turno hoy"
@@ -156,6 +232,8 @@ function Jornadas({
           </div>
         </section>
 
+        <WeekStrip cfg={cfg} map={map} today={today} onEdit={onWeekPlan} onRotate={onSchedule} />
+
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Media por día" value={sum.days ? fmtH(sum.avg) : "—"} />
           <Stat label="Horas normales" value={fmtH(sum.normal)} />
@@ -193,7 +271,7 @@ function Jornadas({
               {cells.map((d, i) => {
                 if (!d) return <span key={i} />
                 const t = map[d]
-                const plan = !t && hasSchedule ? planFor(d, cfg) : null
+                const plan = !t ? planFor(d, cfg) || null : null
                 const intensity = t?.min ? 0.18 + 0.62 * Math.min(1, t.min / maxMin) : 0
                 const off = t && !t.min && t.kinds.some((k) => k !== "trabajo")
                 const label = t
@@ -236,9 +314,9 @@ function Jornadas({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
                 Toca un día para registrar o editar la jornada.
-                {hasSchedule ? " Los días con borde discontinuo son turnos previstos." : ""}
+                {hasAny ? " Los días con borde discontinuo son turnos previstos." : ""}
               </p>
-              {hasSchedule ? (
+              {hasAny ? (
                 <Button size="sm" variant="outline" className="rounded-full" onClick={onFill}>
                   <WandSparklesIcon /> Rellenar con mi horario
                 </Button>
@@ -260,7 +338,11 @@ function Jornadas({
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-sm font-medium">
                         {+w.start.slice(8)} {monthShort(w.start.slice(0, 7))} – {+w.end.slice(8)} {monthShort(w.end.slice(0, 7))}
-                        {w.cycle ? <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">Semana {w.cycle}</span> : null}
+                        {w.planned ? (
+                          <span className="ml-2 rounded-full bg-gold/25 px-2 py-0.5 text-[11px] font-semibold">Planificada</span>
+                        ) : w.cycle ? (
+                          <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">Semana {w.cycle}</span>
+                        ) : null}
                       </span>
                       <span className="font-heading text-sm font-semibold tabular-nums">
                         {fmtH(w.sum.min)} <span className="font-normal text-muted-foreground">/ {fmtH(w.target)}</span>
@@ -270,7 +352,12 @@ function Jornadas({
                     <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                       <span>{w.sum.days} días</span>
                       {w.sum.extra ? <span className="font-medium text-out">{fmtMin(w.sum.extra)} extra</span> : null}
-                      {w.sum.min > w.target ? <span>{fmtMin(w.sum.min - w.target)} por encima de {hasSchedule ? "tu horario" : "tu jornada"}</span> : null}
+                      {w.sum.min > w.target ? <span>{fmtMin(w.sum.min - w.target)} por encima de {hasAny ? "tu horario" : "tu jornada"}</span> : null}
+                      {w.end >= today ? (
+                        <button type="button" className="ml-auto font-medium text-primary underline-offset-2 hover:underline" onClick={() => onWeekPlan(w.start)}>
+                          {w.planned ? "Editar horario" : "Planificar"}
+                        </button>
+                      ) : null}
                     </div>
                   </li>
                 )
@@ -311,9 +398,27 @@ function Jornadas({
               </div>
             ) : (
               <p className="text-muted-foreground">
-                ¿Tus turnos cambian de una semana a otra? Configura tu horario y ficharé cada día con el turno que te toca.
+                ¿Tus turnos se repiten cada pocas semanas? Configura el horario rotativo. ¿Cada semana es distinta? Usa «Planificar
+                semana».
               </p>
             )}
+            {planned.length ? (
+              <div className="grid gap-1.5 border-t pt-2.5">
+                <span className="text-xs font-semibold text-muted-foreground">Semanas planificadas</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {planned.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => onWeekPlan(k)}
+                      className="rounded-lg bg-gold/20 px-2 py-1 text-xs font-medium hover:bg-gold/30"
+                    >
+                      {+k.slice(8)} {monthShort(k.slice(0, 7))} · {fmtH(cycleWeekMinutes(cfg.weekPlans![k]))}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

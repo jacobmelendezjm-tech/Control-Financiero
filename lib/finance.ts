@@ -94,6 +94,11 @@ export interface WorkCfg {
   pausa: number
   /** Horario por turnos que se repite en un ciclo de semanas. */
   schedule?: Schedule
+  /**
+   * Semanas planificadas una a una (horarios que cambian cada semana sin patrón).
+   * Clave: lunes de la semana (AAAA-MM-DD). Tiene prioridad sobre `schedule`.
+   */
+  weekPlans?: Record<string, (DayPlan | null)[]>
 }
 export interface DayPlan {
   ini: string
@@ -289,6 +294,11 @@ export function normalizeWork(w: unknown): WorkData {
     !sch.weeks.every((w) => Array.isArray(w) && w.length === 7)
   )
     delete cfg.schedule
+  if (cfg.weekPlans && typeof cfg.weekPlans === "object") {
+    for (const [k, w] of Object.entries(cfg.weekPlans))
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Array.isArray(w) || w.length !== 7) delete cfg.weekPlans[k]
+    if (!Object.keys(cfg.weekPlans).length) delete cfg.weekPlans
+  } else delete cfg.weekPlans
   const shifts = Array.isArray(o.shifts)
     ? o.shifts.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(x.d) && SHIFT_KINDS.includes(x.kind))
     : []

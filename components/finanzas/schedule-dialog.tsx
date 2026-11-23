@@ -225,3 +225,199 @@ export function ScheduleDialog({
     </Shell>
   )
 }
+
+/* ---------- Planificar una semana concreta (a toques) ---------- */
+const fmtDay = (d: string) => {
+  const [y, m, dd] = d.split("-").map(Number)
+  return new Date(y, m - 1, dd).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "")
+}
+/** «08:00»→«8», «09:30»→«9:30» */
+const short = (t: string) => {
+  const [h, m] = t.split(":")
+  return m === "00" ? String(+h) : `${+h}:${m}`
+}
+export const shiftLabel = (p: DayPlan) => `${short(p.ini)}–${short(p.fin)}`
+
+/** Turnos habituales del usuario (lo que más ficha y su horario), para elegir con un toque. */
+export function usualShifts(cfg: WorkCfg, shifts: { kind: string; ini: string; fin: string; pausa: number }[]): DayPlan[] {
+  const count = new Map<string, { p: DayPlan; n: number }>()
+  const push = (p: DayPlan | null | undefined, n = 1) => {
+    if (!p || !p.ini || !p.fin) return
+    const k = `${p.ini}-${p.fin}`
+    const cur = count.get(k)
+    count.set(k, { p: { ini: p.ini, fin: p.fin, pausa: p.pausa || 0 }, n: (cur?.n || 0) + n })
+  }
+  for (const s of shifts.slice(-60)) if (s.kind === "trabajo") push(s)
+  for (const w of cfg.schedule?.weeks || []) for (const p of w) push(p, 2)
+  for (const w of Object.values(cfg.weekPlans || {})) for (const p of w) push(p, 2)
+  if (!count.size) push({ ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa })
+  return [...count.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((x) => x.p)
+}
+
+/**
+ * Horario de una semana concreta: un toque por día. Pensado para quien tiene turnos
+ * distintos cada semana. Tiene prioridad sobre el horario rotativo y la jornada normal.
+ */
+export function WeekPlanDialog({
+  open,
+  cfg,
+  shifts,
+  initialWeek,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  cfg: WorkCfg
+  shifts: { kind: string; ini: string; fin: string; pausa: number }[]
+  initialWeek?: string
+  onClose: () => void
+  onSave: (monday: string, week: (DayPlan | null)[] | null) => void
+}) {
+  const thisWeek = weekStart(todayStr())
+  const presets = React.useMemo(() => usualShifts(cfg, shifts), [cfg, shifts])
+  const [ws, setWs] = React.useState(initialWeek || thisWeek)
+  const planOf = React.useCallback(
+    (monday: string): (DayPlan | null)[] =>
+      cfg.weekPlans?.[monday]
+        ? cloneWeek(cfg.weekPlans[monday])
+        : Array.from({ length: 7 }, (_, i) => {
+            const p = planForCycle(addDays(monday, i), cfg)
+            return p ? { ...p } : null
+          }),
+    [cfg]
+  )
+  const [week, setWeek] = React.useState<(DayPlan | null)[]>(() => planOf(initialWeek || thisWeek))
+  const [custom, setCustom] = React.useState<number | null>(null)
+  const [err, setErr] = React.useState("")
+  const saved = !!cfg.weekPlans?.[ws]
+  const prevWeek = planOf(addDays(ws, -7))
+
+  const move = (k: number) => {
+    const next = addDays(ws, 7 * k)
+    setWs(next)
+    setWeek(planOf(next))
+    setCustom(null)
+    setErr("")
+  }
+  const setDay = (j: number, v: DayPlan | null) => setWeek((w) => w.map((x, i) => (i === j ? v : x)))
+  const same = (a: DayPlan | null, b: DayPlan | null) => (!a && !b) || (!!a && !!b && a.ini === b.ini && a.fin === b.fin)
+
+  function save() {
+    for (const [j, d] of week.entries()) {
+      if (!d) continue
+      if (toMin(d.ini) == null || toMin(d.fin) == null || planMinutes(d) <= 0) return setErr(`Revisa las horas del ${DAY_NAMES[j].toLowerCase()}.`)
+    }
+    onSave(ws, week)
+  }
+
+  const label = ws === thisWeek ? "Esta semana" : ws === addDays(thisWeek, 7) ? "Semana que viene" : `${fmtDay(ws)} – ${fmtDay(addDays(ws, 6))}`
+  return (
+    <Shell open={open} onClose={onClose} title="Tu horario">
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-muted p-1">
+          <Button type="button" variant="ghost" size="icon" aria-label="Semana anterior" onClick={() => move(-1)}>
+            ‹
+          </Button>
+          <div className="grid text-center leading-tight">
+            <span className="text-sm font-semibold">{label}</span>
+            <span className="text-[11px] text-muted-foreground">{fmtH(cycleWeekMinutes(week))}</span>
+          </div>
+          <Button type="button" variant="ghost" size="icon" aria-label="Semana siguiente" onClick={() => move(1)}>
+            ›
+          </Button>
+        </div>
+
+        {prevWeek.some(Boolean) ? (
+          <Button type="button" variant="outline" size="sm" className="justify-self-start rounded-full" onClick={() => setWeek(prevWeek.map((p) => (p ? { ...p } : null)))}>
+            Igual que la semana anterior
+          </Button>
+        ) : null}
+
+        <ul className="grid gap-1">
+          {week.map((d, j) => (
+            <li key={j} className="grid gap-1.5 rounded-xl py-1">
+              <div className="flex items-center gap-2">
+                <span className="w-11 shrink-0 leading-tight">
+                  <span className="block text-sm font-semibold">{DAY_NAMES[j].slice(0, 3)}</span>
+                  <span className="block text-[10px] text-muted-foreground">{+addDays(ws, j).slice(8)}</span>
+                </span>
+                <div className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDay(j, null)
+                      setCustom(null)
+                    }}
+                    className={cn("shrink-0 rounded-full px-3 py-1.5 text-sm ring-1 ring-foreground/10", !d && "bg-muted font-semibold ring-foreground/30")}
+                  >
+                    Libre
+                  </button>
+                  {presets.map((p) => (
+                    <button
+                      key={p.ini + p.fin}
+                      type="button"
+                      onClick={() => {
+                        setDay(j, { ...p })
+                        setCustom(null)
+                      }}
+                      className={cn(
+                        "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium tabular-nums ring-1 ring-foreground/10",
+                        same(d, p) && "bg-primary text-primary-foreground ring-primary"
+                      )}
+                    >
+                      {shiftLabel(p)}
+                    </button>
+                  ))}
+                  {d && !presets.some((p) => same(d, p)) ? (
+                    <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground tabular-nums">{shiftLabel(d)}</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-label={`Otro horario el ${DAY_NAMES[j]}`}
+                    onClick={() => {
+                      if (!d) setDay(j, { ...(presets[0] || { ini: cfg.ini, fin: cfg.fin, pausa: 0 }) })
+                      setCustom(custom === j ? null : j)
+                    }}
+                    className={cn("shrink-0 rounded-full px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-dashed ring-foreground/20", custom === j && "ring-primary text-primary")}
+                  >
+                    Otro…
+                  </button>
+                </div>
+              </div>
+              {custom === j && d ? (
+                <div className="ml-13 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 [&_input[type=time]::-webkit-calendar-picker-indicator]:hidden">
+                  <Input aria-label={`Entrada del ${DAY_NAMES[j]}`} type="time" value={d.ini} onChange={(e) => setDay(j, { ...d, ini: e.target.value })} className="h-10 text-center" />
+                  <span className="text-muted-foreground">a</span>
+                  <Input aria-label={`Salida del ${DAY_NAMES[j]}`} type="time" value={d.fin} onChange={(e) => setDay(j, { ...d, fin: e.target.value })} className="h-10 text-center" />
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+
+        <FormError msg={err} />
+        <div className="flex items-center justify-between gap-2">
+          {saved ? (
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => onSave(ws, null)}>
+              Borrar semana
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button type="button" className="h-11 rounded-full px-6" onClick={save}>
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+/** Turno del horario rotativo, ignorando semanas planificadas (para proponer valores). */
+function planForCycle(date: string, cfg: WorkCfg) {
+  const sch = cfg.schedule
+  if (!sch?.on || !sch.weeks.length) return null
+  const [y, m, d] = date.split("-").map(Number)
+  const wd = (new Date(y, m - 1, d).getDay() + 6) % 7
+  return sch.weeks[weekIndex(date, sch)][wd] || null
+}

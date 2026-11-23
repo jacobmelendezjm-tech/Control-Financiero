@@ -49,11 +49,10 @@ export function dayTotals(shifts: Shift[], cfg: WorkCfg) {
     t.shifts.push(s)
     if (!t.kinds.includes(s.kind)) t.kinds.push(s.kind)
   }
-  const useSchedule = scheduleOn(cfg)
   for (const t of Object.values(map)) {
     const manual = t.shifts.filter((s) => s.ex != null)
     // Con horario por turnos: extra = lo que pasa del turno de ese día (o el día entero si no tocaba trabajar).
-    const plan = useSchedule ? planFor(t.d, cfg) : undefined
+    const plan = planFor(t.d, cfg)
     t.extra = manual.length
       ? manual.reduce((a, s) => a + (s.ex || 0), 0)
       : plan === undefined
@@ -125,7 +124,7 @@ export function monthDays(map: Record<string, DayTotal>, month: string) {
 export function monthWeeks(map: Record<string, DayTotal>, month: string, cfg: WorkCfg) {
   const first = `${month}-01`,
     last = `${month}-${pad(daysIn(month))}`
-  const out: { start: string; end: string; days: DayTotal[]; sum: PeriodSummary; target: number; cycle: number | null }[] = []
+  const out: { start: string; end: string; days: DayTotal[]; sum: PeriodSummary; target: number; cycle: number | null; planned: boolean }[] = []
   for (let ws = weekStart(first); ws <= last; ws = addDays(ws, 7)) {
     const end = addDays(ws, 6)
     const days: DayTotal[] = []
@@ -140,6 +139,7 @@ export function monthWeeks(map: Record<string, DayTotal>, month: string, cfg: Wo
       sum: summarize(days, cfg),
       target: weekTarget(ws, cfg),
       cycle: scheduleOn(cfg) && cfg.schedule!.weeks.length > 1 ? weekIndex(ws, cfg.schedule!) + 1 : null,
+      planned: !!cfg.weekPlans?.[ws],
     })
   }
   return out
@@ -195,6 +195,10 @@ export function netPerHour(data: FinanceData) {
 export const DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 export const scheduleOn = (cfg: WorkCfg) => !!cfg.schedule?.on && !!cfg.schedule.weeks.length
+/** ¿Hay alguna forma de horario (rotativo o semanas planificadas)? */
+export const hasAnySchedule = (cfg: WorkCfg) => scheduleOn(cfg) || !!Object.keys(cfg.weekPlans || {}).length
+/** Plan de una semana concreta (lunes), si se planificó a mano. */
+export const weekPlanOf = (cfg: WorkCfg, monday: string) => cfg.weekPlans?.[monday]
 
 /** Posición (0…n-1) de la semana de esa fecha dentro del ciclo. */
 export function weekIndex(date: string, sch: Schedule) {
@@ -205,6 +209,10 @@ export function weekIndex(date: string, sch: Schedule) {
 
 /** Turno previsto para una fecha: el plan, null si ese día es libre, undefined si no hay horario. */
 export function planFor(date: string, cfg: WorkCfg): DayPlan | null | undefined {
+  // 1) Semana planificada a mano.
+  const wp = cfg.weekPlans?.[weekStart(date)]
+  if (wp) return wp[(dateOf(date).getDay() + 6) % 7] || null
+  // 2) Horario rotativo.
   if (!scheduleOn(cfg)) return undefined
   const sch = cfg.schedule!
   const wd = (dateOf(date).getDay() + 6) % 7
@@ -216,7 +224,7 @@ export const planMinutes = (p: DayPlan) =>
 
 /** Horas objetivo de la semana que empieza en `ws` (lunes). */
 export function weekTarget(ws: string, cfg: WorkCfg) {
-  if (!scheduleOn(cfg)) return Math.round(cfg.horasSemana * 60)
+  if (!scheduleOn(cfg) && !cfg.weekPlans?.[ws]) return Math.round(cfg.horasSemana * 60)
   let m = 0
   for (let i = 0; i < 7; i++) {
     const p = planFor(addDays(ws, i), cfg)

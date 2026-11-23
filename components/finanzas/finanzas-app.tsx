@@ -44,7 +44,7 @@ import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
 import { ThemeToggle } from "@/components/finanzas/theme-toggle"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
-import { ScheduleDialog } from "@/components/finanzas/schedule-dialog"
+import { ScheduleDialog, WeekPlanDialog } from "@/components/finanzas/schedule-dialog"
 import { WorkView } from "@/components/finanzas/work-view"
 import {
   AjustesView,
@@ -88,6 +88,7 @@ import {
   type Goal,
   type Payslip,
   type Recurring,
+  type DayPlan,
   type Schedule,
   type Shift,
   type Tx,
@@ -147,6 +148,7 @@ type Sheet =
   | { kind: "payslip"; payslip: Payslip | null }
   | { kind: "workcfg" }
   | { kind: "schedule" }
+  | { kind: "weekplan"; week?: string }
   | null
 
 /* ---------- operaciones sobre un borrador ---------- */
@@ -707,6 +709,19 @@ export function FinanzasApp() {
     if (!orbiSay(sch ? "¡Horario guardado! Ahora ficho cada día con el turno que te toca." : "Horario quitado. Vuelvo a tu jornada normal.", "happy"))
       toast.success(sch ? "Horario guardado" : "Horario quitado")
   }
+  const saveWeekPlan = (monday: string, week: (DayPlan | null)[] | null) => {
+    update((d) => {
+      d.hasSettings = true
+      const plans = { ...(d.work.cfg.weekPlans || {}) }
+      if (week) plans[monday] = week
+      else delete plans[monday]
+      if (Object.keys(plans).length) d.work.cfg.weekPlans = plans
+      else delete d.work.cfg.weekPlans
+    })
+    close()
+    if (!orbiSay(week ? "¡Semana planificada! Ficharé cada día con el turno que pusiste." : "Semana quitada. Vuelvo a tu horario habitual.", "happy"))
+      toast.success(week ? "Semana planificada" : "Planificación quitada")
+  }
   /** Apunta los días pasados del mes según el horario, sin tocar los ya registrados. */
   const fillFromSchedule = () => {
     if (guardDemo()) return
@@ -927,7 +942,8 @@ export function FinanzasApp() {
                   onDay={openDay}
                   onClock={clockToday}
                   onCfg={() => open({ kind: "workcfg" })}
-                  onSchedule={() => !guardDemo() && open({ kind: "schedule" })}
+                  onSchedule={() => open({ kind: "schedule" })}
+                  onWeekPlan={(week) => open({ kind: "weekplan", week })}
                   onFill={fillFromSchedule}
                   onNewPayslip={() => openPayslip(null)}
                   onEditPayslip={openPayslip}
@@ -1021,6 +1037,9 @@ export function FinanzasApp() {
             onSave={savePayslip}
             onDelete={deletePayslip}
           />
+        ) : null}
+        {sheet?.kind === "weekplan" ? (
+          <WeekPlanDialog key={sheetKey} open cfg={real.work.cfg} shifts={real.work.shifts} initialWeek={sheet.week} onClose={close} onSave={saveWeekPlan} />
         ) : null}
         {sheet?.kind === "schedule" ? <ScheduleDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveSchedule} /> : null}
         {sheet?.kind === "workcfg" ? <WorkCfgDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveWorkCfg} /> : null}

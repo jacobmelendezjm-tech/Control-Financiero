@@ -22,6 +22,7 @@ export type Table =
   | "goal_contributions"
   | "work_schedules"
   | "work_schedule_days"
+  | "work_week_plans"
   | "transactions"
   | "shifts"
   | "payslips"
@@ -37,6 +38,7 @@ export const TABLES: Table[] = [
   "goal_contributions",
   "work_schedules",
   "work_schedule_days",
+  "work_week_plans",
   "transactions",
   "shifts",
   "payslips",
@@ -55,6 +57,7 @@ const COLS: Record<Table, string[]> = {
   goal_contributions: ["id", "goal_id", "fecha", "importe"],
   work_schedules: ["activo", "ancla", "semanas"],
   work_schedule_days: ["semana", "dia", "hora_entrada", "hora_salida", "pausa_min"],
+  work_week_plans: ["lunes", "dia", "hora_entrada", "hora_salida", "pausa_min"],
   transactions: ["id", "fecha", "tipo", "importe", "category_id", "nota", "recurring_id", "payslip_id", "hormiga", "orden"],
   shifts: ["id", "fecha", "tipo", "hora_entrada", "hora_salida", "pausa_min", "extra_min", "nota"],
   payslips: ["id", "mes", "fecha_cobro", "bruto", "irpf", "seg_social", "otros", "neto", "extras", "horas_extra_min", "transaction_id", "nota"],
@@ -67,7 +70,13 @@ const NUM = new Set([
 const TIME = new Set(["hora_entrada", "hora_salida"])
 
 export const keyOf = (t: Table, r: Row) =>
-  SINGLE.includes(t) ? "me" : t === "work_schedule_days" ? `${r.semana}-${r.dia}` : String(r.id)
+  SINGLE.includes(t)
+    ? "me"
+    : t === "work_schedule_days"
+      ? `${r.semana}-${r.dia}`
+      : t === "work_week_plans"
+        ? `${r.lunes}-${r.dia}`
+        : String(r.id)
 
 /** Fila tal y como llega de la base de datos → forma canónica (mismas columnas y tipos que toRows). */
 export function canonical(t: Table, raw: Record<string, unknown>): Row {
@@ -78,7 +87,7 @@ export function canonical(t: Table, raw: Record<string, unknown>): Row {
     if (v !== null && TIME.has(c)) v = String(v).slice(0, 5)
     else if (v !== null && c === "objetivo" && t === "goals") v = Number(v)
     else if (v !== null && NUM.has(c)) v = Number(v)
-    else if (v !== null && (c === "fecha" || c === "fecha_cobro" || c === "mes" || c === "ancla" || c === "fecha_limite")) v = String(v).slice(0, 10)
+    else if (v !== null && (c === "fecha" || c === "fecha_cobro" || c === "mes" || c === "ancla" || c === "fecha_limite" || c === "lunes")) v = String(v).slice(0, 10)
     out[c] = v
   }
   return out
@@ -144,6 +153,16 @@ export function toRows(d: FinanceData): RowSet {
       })
     )
   }
+  for (const [lunes, wk] of Object.entries(w.weekPlans || {}))
+    wk.forEach((p2, j) => {
+      rs.work_week_plans[`${lunes}-${j}`] = canonical("work_week_plans", {
+        lunes,
+        dia: j,
+        hora_entrada: p2 ? p2.ini : null,
+        hora_salida: p2 ? p2.fin : null,
+        pausa_min: p2 ? p2.pausa || 0 : 0,
+      })
+    })
   for (const t of Object.values(d.months).flat())
     rs.transactions[t.id] = canonical("transactions", {
       id: t.id,
@@ -215,6 +234,14 @@ export function fromRows(rs: RowSet): FinanceData {
     }
     schedule = { on: !!sch.activo, anchor: String(sch.ancla), weeks }
   }
+  const weekPlans: Record<string, (DayPlan | null)[]> = {}
+  for (const d of Object.values(rs.work_week_plans)) {
+    const k = String(d.lunes)
+    const wk = (weekPlans[k] ||= Array(7).fill(null))
+    const j = Number(d.dia)
+    if (j >= 0 && j < 7 && d.hora_entrada && d.hora_salida)
+      wk[j] = { ini: String(d.hora_entrada), fin: String(d.hora_salida), pausa: Number(d.pausa_min) || 0 }
+  }
 
   return loadAll({
     hasSettings: true,
@@ -262,6 +289,7 @@ export function fromRows(rs: RowSet): FinanceData {
         fin: String(ws?.hora_salida || "17:30"),
         pausa: Number(ws?.pausa_min ?? 30),
         ...(schedule ? { schedule } : {}),
+        ...(Object.keys(weekPlans).length ? { weekPlans } : {}),
       },
       shifts: Object.values(rs.shifts).map((x) => {
         const s: Shift = {

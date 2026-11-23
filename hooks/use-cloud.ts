@@ -168,14 +168,15 @@ export function useCloud(store: FinanceStore) {
         const removed: Row[] = []
         for (const [k, r] of Object.entries(target[t])) if (!sameRow(r, base[t][k])) changed.push(r)
         for (const [k, r] of Object.entries(base[t])) if (!(k in target[t])) removed.push(r)
-        if (t === "work_schedule_days") {
-          // El horario se rehace: borrar días quitados y escribir los nuevos.
+        if (t === "work_schedule_days" || t === "work_week_plans") {
+          // Los horarios se rehacen: borrar días quitados y escribir los nuevos.
+          const k1 = t === "work_schedule_days" ? "semana" : "lunes"
           for (const r of removed) {
-            const { error } = await sb.from(t).delete().eq("user_id", uid).eq("semana", r.semana as number).eq("dia", r.dia as number)
+            const { error } = await sb.from(t).delete().eq("user_id", uid).eq(k1, r[k1] as string).eq("dia", r.dia as number)
             if (error) return error as Err
           }
           if (changed.length) {
-            const { error } = await sb.from(t).upsert(changed.map((r) => ({ ...r, user_id: uid })), { onConflict: "user_id,semana,dia" })
+            const { error } = await sb.from(t).upsert(changed.map((r) => ({ ...r, user_id: uid })), { onConflict: `user_id,${k1},dia` })
             if (error) return error as Err
           }
           continue
@@ -232,6 +233,20 @@ export function useCloud(store: FinanceStore) {
           if (server) base[t][k] = server
           else delete base[t][k]
         }
+      // Horarios: se borran filas de verdad, así que se comparan completos para ver los borrados.
+      for (const t of ["work_schedule_days", "work_week_plans"] as const) {
+        const { data: all, error: e2 } = await sb.from(t).select("*").eq("user_id", u.id)
+        if (e2) return fail(e2 as Err)
+        const live = new Set((all || []).map((raw) => keyOf(t, canonical(t, raw))))
+        for (const k of Object.keys(base[t]))
+          if (!live.has(k)) {
+            if (sameRow(local[t][k], base[t][k])) {
+              delete local[t][k]
+              touched = true
+            }
+            delete base[t][k]
+          }
+      }
       if (touched) {
         if (!local.work_schedules.me) local.work_schedule_days = {}
         applyLocal(local)
