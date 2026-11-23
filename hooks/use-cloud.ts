@@ -10,6 +10,7 @@ import {
   TABLES,
   canonical,
   cloneRows,
+  fillTables,
   fromRows,
   hasCloudData,
   keyOf,
@@ -52,7 +53,11 @@ export interface CloudConflict {
 function readSync(): SyncState | null {
   try {
     const raw = localStorage.getItem(SYNC_KEY)
-    return raw ? (JSON.parse(raw) as SyncState) : null
+    if (!raw) return null
+    const st = JSON.parse(raw) as SyncState
+    // Puntos de partida guardados por versiones anteriores pueden no tener las tablas nuevas.
+    st.base = fillTables(st.base)
+    return st
   } catch {
     return null
   }
@@ -169,8 +174,10 @@ export function useCloud(store: FinanceStore) {
 
   /** Sube la diferencia entre `target` y `base`. Devuelve false si algo falló. */
   const upload = React.useCallback(
-    async (sb: SupabaseClient, uid: string, target: RowSet, base: RowSet) => {
+    async (sb: SupabaseClient, uid: string, target: RowSet, baseIn: RowSet) => {
       const now = new Date().toISOString()
+      const base = fillTables(baseIn)
+      fillTables(target)
       for (const t of TABLES) {
         const changed: Row[] = []
         const removed: Row[] = []

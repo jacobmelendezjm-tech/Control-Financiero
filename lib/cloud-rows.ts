@@ -349,6 +349,16 @@ export function hasCloudData(rs: RowSet) {
 
 export const sameRow = (a: Row | undefined, b: Row | undefined) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
+/**
+ * Completa un RowSet al que le falten tablas (p. ej. guardado por una versión
+ * anterior de la app, antes de existir esas tablas).
+ */
+export function fillTables(rs: Partial<RowSet> | null | undefined): RowSet {
+  const out = (rs && typeof rs === "object" ? rs : {}) as RowSet
+  for (const t of TABLES) if (!out[t] || typeof out[t] !== "object") out[t] = {}
+  return out
+}
+
 /** Copia profunda sencilla de un RowSet. */
 export const cloneRows = (rs: RowSet): RowSet => JSON.parse(JSON.stringify(rs))
 
