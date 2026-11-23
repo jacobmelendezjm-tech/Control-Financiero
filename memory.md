@@ -166,3 +166,9 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - `Settings.moneda` (por defecto `EUR`). `setMoneda()` en `lib/finance.ts` cambia los formateadores globales; se llama en cada render de `FinanzasApp` con `real.settings.moneda`. Para etiquetas usar `sim()` (nunca «€» fijo) y `retenciones()` para IRPF/Ganancias y Seguridad Social/Aportes.
 - Monedas en `MONEDAS` (`lib/finance.ts`): USD usa locale es-AR para que salga `US$ 1.250,50` con coma decimal, como el resto de la app.
 - Nube: `profiles.moneda` (migraciones `20261129000000_profiles_moneda.sql` y `20261130000000_profiles_moneda_usd.sql`). `upsertTolerant` en `hooks/use-cloud.ts` quita columnas que la base aún no tiene (PGRST204) para no parar la sincronización.
+
+## Seguridad
+
+- Informe del pentest en `SEGURIDAD.md`. Cabeceras (CSP, X-Frame-Options, Permissions-Policy) en `next.config.ts`: si se añade un servicio externo (analítica, pagos, fuentes de Google…), hay que añadirlo a la CSP o se bloqueará.
+- Recordatorios: solo endpoints de FCM, Mozilla, Microsoft y Apple (SQL `orbe_push_endpoint_ok` y `PUSH_HOST` en el cron); enlaces de avisos siempre internos.
+- Antes de dar por buena una migración con funciones, probarla en PGlite (había un banco de pruebas en el scratchpad de la sesión del 23/11/2026).

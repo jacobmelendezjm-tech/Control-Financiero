@@ -127,6 +127,16 @@ async function upsertTolerant(sb: SupabaseClient, t: string, rows: Record<string
   return null
 }
 
+/** Quita del servidor la suscripción de avisos de este navegador (mientras hay sesión). */
+async function releasePush(sb: SupabaseClient) {
+  try {
+    if (!("serviceWorker" in navigator)) return
+    const reg = await navigator.serviceWorker.getRegistration()
+    const sub = await reg?.pushManager.getSubscription()
+    if (sub) await sb.rpc("orbe_push_unsubscribe", { p_endpoint: sub.endpoint })
+  } catch {}
+}
+
 export function useCloud(store: FinanceStore) {
   const [user, setUser] = React.useState<User | null>(null)
   const [authReady, setAuthReady] = React.useState(!cloudEnabled)
@@ -517,6 +527,9 @@ export function useCloud(store: FinanceStore) {
   const signOut = async (wipeLocal: boolean) => {
     const sb = getSupabase()
     if (ready.current) await sync()
+    // Los recordatorios de este navegador quedan ligados a la cuenta: se sueltan antes de salir
+    // (si no, sin sesión ya no se podrían actualizar). La app los vuelve a guardar sin cuenta.
+    if (sb) await releasePush(sb)
     await sb?.auth.signOut()
     ready.current = false
     writeSync(null)

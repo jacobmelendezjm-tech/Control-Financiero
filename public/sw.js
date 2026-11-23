@@ -78,7 +78,10 @@ self.addEventListener("push", (e) => {
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close()
-  const target = new URL((e.notification.data && e.notification.data.url) || "/", self.location.origin).href
+  // Solo se abren páginas de la propia app (nunca otra web, aunque el aviso lo pidiera).
+  let target = new URL((e.notification.data && e.notification.data.url) || "/", self.location.origin)
+  if (target.origin !== self.location.origin) target = new URL("/", self.location.origin)
+  target = target.href
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {

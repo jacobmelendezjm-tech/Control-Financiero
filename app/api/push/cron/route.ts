@@ -29,6 +29,10 @@ interface Due {
 
 export const maxDuration = 60
 
+/** Solo se envía a servicios de notificaciones reales (igual que comprueba la base de datos). */
+const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com)\//
+const safeUrl = (u: string) => (/^\/(?![/\\])/.test(u || "") ? u : "/")
+
 export async function POST(request: Request) {
   const secret = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim()
   if (!secret) return Response.json({ error: "No autorizado" }, { status: 401 })
@@ -38,6 +42,7 @@ export async function POST(request: Request) {
   if (error) return Response.json({ error: "No autorizado" }, { status: 403 })
 
   const due = data as Due
+  due.items = (due.items || []).filter((it) => PUSH_HOST.test(it.endpoint))
   if (!due.items.length) return Response.json({ sent: 0, gone: 0 })
   if (!due.vapid_public || !due.vapid_private) return Response.json({ error: "Faltan las claves VAPID" }, { status: 500 })
 
@@ -46,7 +51,7 @@ export async function POST(request: Request) {
     due.items.map((it) =>
       webpush.sendNotification(
         { endpoint: it.endpoint, keys: { p256dh: it.p256dh, auth: it.auth } },
-        JSON.stringify({ title: it.title, body: it.body, url: it.url, tag: it.tag }),
+        JSON.stringify({ title: String(it.title).slice(0, 120), body: String(it.body || "").slice(0, 400), url: safeUrl(it.url), tag: it.tag }),
         { TTL: 60 * 60 * 3, urgency: "normal" }
       )
     )

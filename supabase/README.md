@@ -18,6 +18,7 @@ Ejecutar en orden en **Supabase → SQL Editor** (todas se pueden repetir sin ro
 | `20261128000000_profiles_intereses.sql` | `profiles.intereses`: lo que le interesa al usuario (formulario «¿Qué te interesa?»), ordena Inicio. |
 | `20261129000000_profiles_moneda.sql` | `profiles.moneda`: `EUR` o `ARS`. Los importes siguen en céntimos; solo cambia cómo se muestran. Si falta la columna, la app sube el resto sin ella y avisa en la consola. |
 | `20261130000000_profiles_moneda_usd.sql` | Amplía `profiles.moneda` para admitir `USD` (dólar estadounidense). |
+| `20261201000000_push_hardening.sql` | Pentest: los recordatorios solo admiten servicios de notificaciones reales, avisos con tamaño y enlaces internos, y nadie puede pisar ni borrar la suscripción de un usuario con cuenta. Ver `SEGURIDAD.md`. |
 | `private/push_setup.sql` (**no está en git**) | Claves VAPID, secreto del cron y tarea `pg_cron` cada 10 min que llama a `/api/push/cron`. |
 
 ## Recordatorios (notificaciones push)

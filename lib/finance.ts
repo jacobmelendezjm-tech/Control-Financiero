@@ -560,6 +560,8 @@ export function niceScale(max: number, n: number) {
 }
 
 /* ---------- CSV (punto y coma y coma decimal: se abre bien en Excel en español) ---------- */
+/** Texto que Excel interpretaría como fórmula (=, +, -, @…): se le antepone un apóstrofo. */
+const noFormula = (s: string) => (/^[=+\-@\t\r]/.test(s) ? "'" + s : s)
 function csvCell(v: unknown) {
   const s = String(v ?? "")
   return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
@@ -574,9 +576,9 @@ export function toCSV(months: Record<string, Tx[]>, cats: Category[]) {
     rows.push([
       fmtDate(t.d),
       t.t === "i" ? "Ingreso" : "Gasto",
-      cm[t.cat]?.n || "",
+      noFormula(cm[t.cat]?.n || ""),
       (t.t === "i" ? "" : "-") + (t.c / 100).toFixed(2).replace(".", ","),
-      t.n || "",
+      noFormula(t.n || ""),
     ])
   return "﻿" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n")
 }
