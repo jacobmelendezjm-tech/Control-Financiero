@@ -101,6 +101,23 @@ export interface WorkCfg {
    * Clave: lunes de la semana (AAAA-MM-DD). Tiene prioridad sobre `schedule`.
    */
   weekPlans?: Record<string, (DayPlan | null)[]>
+  /** Cómo trabajas: horario fijo o turnos rotativos. Si falta, se deduce de si hay cuadrante. */
+  modo?: WorkModo
+  /** Tus turnos tipo (Mañana, Tarde, Noche…) para elegirlos con un toque. */
+  turnos?: Turno[]
+  /**
+   * Qué cuenta como extra con turnos: «turno» = lo que pasa del turno previsto ese día
+   * (y el día entero si no te tocaba); «semana» = lo que pasa de tus horas de contrato semanales.
+   */
+  extraRegla?: ExtraRegla
+}
+export type WorkModo = "fijo" | "turnos"
+export type ExtraRegla = "turno" | "semana"
+export interface Turno {
+  n: string
+  ini: string
+  fin: string
+  pausa: number
 }
 export interface DayPlan {
   ini: string
@@ -279,6 +296,15 @@ export const defaultWork = (): WorkData => ({
   cfg: { horasDia: 8, horasSemana: 40, precioHora: 0, precioExtra: 0, ini: "09:00", fin: "17:30", pausa: 30 },
   shifts: [],
 })
+const HHMM = /^\d{2}:\d{2}$/
+/** Lista de turnos tipo limpia (como mucho 6, con nombre y horas válidas). */
+export function normalizeTurnos(x: unknown): Turno[] {
+  if (!Array.isArray(x)) return []
+  return x
+    .filter((t) => t && typeof t === "object" && HHMM.test(t.ini) && HHMM.test(t.fin))
+    .slice(0, 6)
+    .map((t) => ({ n: String(t.n || "Turno").slice(0, 20), ini: t.ini, fin: t.fin, pausa: Math.max(0, Math.min(600, Math.round(Number(t.pausa) || 0))) }))
+}
 const SHIFT_KINDS: ShiftKind[] = ["trabajo", "vacaciones", "festivo", "baja", "libre"]
 export function normalizeWork(w: unknown): WorkData {
   const d = defaultWork()
@@ -290,6 +316,10 @@ export function normalizeWork(w: unknown): WorkData {
   cfg.precioHora = Number(cfg.precioHora) || 0
   cfg.precioExtra = Number(cfg.precioExtra) || 0
   cfg.pausa = Number(cfg.pausa) || 0
+  if (cfg.modo !== "fijo" && cfg.modo !== "turnos") delete cfg.modo
+  if (cfg.extraRegla !== "turno" && cfg.extraRegla !== "semana") delete cfg.extraRegla
+  cfg.turnos = normalizeTurnos(cfg.turnos)
+  if (!cfg.turnos.length) delete cfg.turnos
   const sch = cfg.schedule
   if (
     !sch ||

@@ -63,6 +63,7 @@ export function ScheduleDialog({
   // Qué semana del ciclo es la actual.
   const [nowIdx, setNowIdx] = React.useState(() => (cur?.weeks.length ? weekIndex(today, cur) : 0))
   const [err, setErr] = React.useState("")
+  const firstPlan: DayPlan = cfg.turnos?.[0] ? toPlan(cfg.turnos[0]) : { ini: cfg.ini, fin: cfg.fin, pausa: 0 }
 
   const setCount = (n: number) => {
     setWeeks((ws) => {
@@ -144,7 +145,7 @@ export function ScheduleDialog({
               <Label className="flex items-center gap-2 font-medium">
                 <Checkbox
                   checked={!!d}
-                  onCheckedChange={(v) => setDay(tab, j, v ? d || { ini: cfg.ini, fin: cfg.fin, pausa: 0 } : null)}
+                  onCheckedChange={(v) => setDay(tab, j, v ? d || firstPlan : null)}
                 />
                 {DAY_NAMES[j].slice(0, 3)}
               </Label>
@@ -238,20 +239,30 @@ const short = (t: string) => {
 }
 export const shiftLabel = (p: DayPlan) => `${short(p.ini)}–${short(p.fin)}`
 
-/** Turnos habituales del usuario (lo que más ficha y su horario), para elegir con un toque. */
-export function usualShifts(cfg: WorkCfg, shifts: { kind: string; ini: string; fin: string; pausa: number }[]): DayPlan[] {
+export type Preset = DayPlan & { n?: string }
+/** Un atajo sin el nombre: lo que se guarda en el horario. */
+export const toPlan = (p: Preset): DayPlan => ({ ini: p.ini, fin: p.fin, pausa: p.pausa || 0 })
+/** «Mañana · 6–14» o solo las horas. */
+export const presetLabel = (p: Preset) => (p.n ? `${p.n} · ${shiftLabel(p)}` : shiftLabel(p))
+
+/** Turnos habituales: primero tus turnos tipo, luego lo que más fichas y tu horario. */
+export function usualShifts(cfg: WorkCfg, shifts: { kind: string; ini: string; fin: string; pausa: number }[]): Preset[] {
+  const tipos: Preset[] = (cfg.turnos || []).map((t) => ({ n: t.n, ini: t.ini, fin: t.fin, pausa: t.pausa }))
+  const taken = new Set(tipos.map((t) => `${t.ini}-${t.fin}`))
   const count = new Map<string, { p: DayPlan; n: number }>()
   const push = (p: DayPlan | null | undefined, n = 1) => {
     if (!p || !p.ini || !p.fin) return
     const k = `${p.ini}-${p.fin}`
+    if (taken.has(k)) return
     const cur = count.get(k)
     count.set(k, { p: { ini: p.ini, fin: p.fin, pausa: p.pausa || 0 }, n: (cur?.n || 0) + n })
   }
   for (const s of shifts.slice(-60)) if (s.kind === "trabajo") push(s)
   for (const w of cfg.schedule?.weeks || []) for (const p of w) push(p, 2)
   for (const w of Object.values(cfg.weekPlans || {})) for (const p of w) push(p, 2)
-  if (!count.size) push({ ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa })
-  return [...count.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((x) => x.p)
+  if (!count.size && !tipos.length) push({ ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa })
+  const rest = [...count.values()].sort((a, b) => b.n - a.n).map((x) => x.p)
+  return [...tipos, ...rest].slice(0, Math.max(4, tipos.length))
 }
 
 /**
@@ -357,7 +368,7 @@ export function WeekPlanDialog({
                       key={p.ini + p.fin}
                       type="button"
                       onClick={() => {
-                        setDay(j, { ...p })
+                        setDay(j, toPlan(p))
                         setCustom(null)
                       }}
                       className={cn(
@@ -365,7 +376,7 @@ export function WeekPlanDialog({
                         same(d, p) && "bg-primary text-primary-foreground ring-primary"
                       )}
                     >
-                      {shiftLabel(p)}
+                      {presetLabel(p)}
                     </button>
                   ))}
                   {d && !presets.some((p) => same(d, p)) ? (

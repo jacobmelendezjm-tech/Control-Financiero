@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Shell } from "@/components/finanzas/dialogs"
-import { shiftLabel, usualShifts } from "@/components/finanzas/schedule-dialog"
+import { presetLabel, toPlan, usualShifts } from "@/components/finanzas/schedule-dialog"
 import { todayStr, type DayPlan, type Shift, type WorkCfg } from "@/lib/finance"
 import { planFor, planMinutes, toMin } from "@/lib/work"
 import { cn } from "@/lib/utils"
@@ -35,9 +35,12 @@ export function DayDialog({
   onClose,
   onSave,
   onMore,
+  fichar,
 }: {
   open: boolean
   date: string
+  /** Abierto desde «Fichar hoy»: empieza en «Trabajo». */
+  fichar?: boolean
   cfg: WorkCfg
   allShifts: Shift[]
   note: string
@@ -54,10 +57,10 @@ export function DayDialog({
   const initial: { estado: DayEstado; p: DayPlan } = work
     ? { estado: work.cubre ? "cubre" : "trabajo", p: { ini: work.ini, fin: work.fin, pausa: work.pausa } }
     : mine.length
-      ? { estado: "libre", p: presets[0] }
+      ? { estado: "libre", p: presets[0] ? toPlan(presets[0]) : { ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa } }
       : plan
         ? { estado: plan.cubre ? "cubre" : "trabajo", p: { ini: plan.ini, fin: plan.fin, pausa: plan.pausa } }
-        : { estado: "libre", p: presets[0] || { ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa } }
+        : { estado: fichar ? "trabajo" : "libre", p: presets[0] ? toPlan(presets[0]) : { ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa } }
 
   const [estado, setEstado] = React.useState<DayEstado>(initial.estado)
   const [p, setP] = React.useState<DayPlan>(initial.p)
@@ -106,7 +109,7 @@ export function DayDialog({
                     key={x.ini + x.fin}
                     type="button"
                     onClick={() => {
-                      setP({ ...x })
+                      setP(toPlan(x))
                       setCustom(false)
                     }}
                     className={cn(
@@ -114,7 +117,7 @@ export function DayDialog({
                       sel && "bg-primary text-primary-foreground ring-primary"
                     )}
                   >
-                    {shiftLabel(x)}
+                    {presetLabel(x)}
                   </button>
                 )
               })}

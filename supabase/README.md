@@ -14,6 +14,7 @@ Ejecutar en orden en **Supabase → SQL Editor** (todas se pueden repetir sin ro
 | `20261124000000_profiles_email.sql` | Guarda el correo de cada usuario en `profiles.email` (copia automática de `auth.users`). |
 | `20261125000000_push_reminders.sql` | Notificaciones push: suscripciones, agenda de recordatorios y funciones `orbe_push_*`. |
 | `20261126000000_work_week_plans.sql` | Semanas planificadas una a una (`work_week_plans`), turnos «cubro a alguien» (`cubre`) y notas del calendario (`work_day_notes`). |
+| `20261127000000_work_turnos.sql` | Turnos rotativos en «Tu jornada»: `work_settings.modo` (fijo/turnos), `extra_regla` (turno/semana) y `turnos` (turnos tipo en JSON). |
 | `private/push_setup.sql` (**no está en git**) | Claves VAPID, secreto del cron y tarea `pg_cron` cada 10 min que llama a `/api/push/cron`. |
 
 ## Recordatorios (notificaciones push)

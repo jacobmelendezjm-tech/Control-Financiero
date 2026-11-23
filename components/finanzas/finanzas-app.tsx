@@ -98,7 +98,7 @@ import {
   type TxType,
   type WorkCfg,
 } from "@/lib/finance"
-import { addDays, dayTotals, fmtMin, monthDays, planFor, shiftMinutes, summarize, weekStart } from "@/lib/work"
+import { addDays, dayTotals, fmtMin, modoOf, monthDays, planFor, shiftMinutes, summarize, weekStart } from "@/lib/work"
 import { cn } from "@/lib/utils"
 
 const VIEWS = [
@@ -146,7 +146,7 @@ type Sheet =
   | { kind: "workcfg" }
   | { kind: "schedule" }
   | { kind: "weekplan"; week?: string }
-  | { kind: "day"; date: string }
+  | { kind: "day"; date: string; fichar?: boolean }
   | null
 
 /* ---------- operaciones sobre un borrador ---------- */
@@ -664,6 +664,11 @@ export function FinanzasApp() {
       orbiSay("Hoy no tenías turno según tu horario. Apúntalo y lo cuento como extra.", "think")
       return
     }
+    if (plan === undefined && modoOf(cfg) === "turnos") {
+      // A turnos y sin cuadrante: elige el turno de hoy con un toque.
+      open({ kind: "day", date: todayStr(), fichar: true })
+      return
+    }
     const s: Shift = plan
       ? { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: plan.ini, fin: plan.fin, pausa: plan.pausa || 0, ...(plan.cubre ? { cubre: true } : {}) }
       : { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa }
@@ -1116,6 +1121,7 @@ export function FinanzasApp() {
             key={sheetKey}
             open
             date={sheet.date}
+            fichar={sheet.fichar}
             cfg={real.work.cfg}
             allShifts={real.work.shifts}
             note={real.work.notes?.[sheet.date] || ""}
@@ -1131,7 +1137,20 @@ export function FinanzasApp() {
           <WeekPlanDialog key={sheetKey} open cfg={real.work.cfg} shifts={real.work.shifts} initialWeek={sheet.week} onClose={close} onSave={saveWeekPlan} />
         ) : null}
         {sheet?.kind === "schedule" ? <ScheduleDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveSchedule} /> : null}
-        {sheet?.kind === "workcfg" ? <WorkCfgDialog key={sheetKey} open cfg={real.work.cfg} onClose={close} onSave={saveWorkCfg} /> : null}
+        {sheet?.kind === "workcfg" ? <WorkCfgDialog
+            key={sheetKey}
+            open
+            cfg={real.work.cfg}
+            onClose={close}
+            onSave={saveWorkCfg}
+            onSchedule={(c) => {
+              update((d) => {
+                d.work.cfg = c
+                d.hasSettings = true
+              })
+              open({ kind: "schedule" })
+            }}
+          /> : null}
         {sheet?.kind === "goal" ? (
           <GoalDialog key={sheetKey} open goal={sheet.goal} onClose={close} onSave={saveGoal} onDelete={deleteGoal} />
         ) : null}

@@ -6,9 +6,11 @@
 import {
   byDate,
   loadAll,
+  normalizeTurnos,
   type DayPlan,
   type FinanceData,
   type Shift,
+  type Turno,
   type Tx,
 } from "@/lib/finance"
 
@@ -52,7 +54,7 @@ export const SOFT: Table[] = ["categories", "recurring", "goals", "goal_contribu
 
 const COLS: Record<Table, string[]> = {
   profiles: ["nombre", "saldo_inicial", "hormiga_max", "cobro", "neto_aprox", "dia_cobro", "objetivo", "ahorro_mes", "onboarding_done"],
-  work_settings: ["horas_dia", "horas_semana", "precio_hora", "precio_extra", "hora_entrada", "hora_salida", "pausa_min"],
+  work_settings: ["horas_dia", "horas_semana", "precio_hora", "precio_extra", "hora_entrada", "hora_salida", "pausa_min", "modo", "extra_regla", "turnos"],
   categories: ["id", "nombre", "tipo", "grupo", "orden", "presupuesto"],
   recurring: ["id", "nombre", "tipo", "importe", "category_id", "dia", "activo"],
   goals: ["id", "nombre", "objetivo", "ahorrado", "fecha_limite"],
@@ -100,6 +102,16 @@ export function canonical(t: Table, raw: Record<string, unknown>): Row {
 
 const empty = (): RowSet => Object.fromEntries(TABLES.map((t) => [t, {}])) as unknown as RowSet
 
+function turnosOf(v: Row[string] | undefined): { turnos?: Turno[] } {
+  if (typeof v !== "string" || !v) return {}
+  try {
+    const t = normalizeTurnos(JSON.parse(v))
+    return t.length ? { turnos: t } : {}
+  } catch {
+    return {}
+  }
+}
+
 /** Datos de la app → filas. */
 export function toRows(d: FinanceData): RowSet {
   const rs = empty()
@@ -125,6 +137,9 @@ export function toRows(d: FinanceData): RowSet {
     hora_entrada: w.ini,
     hora_salida: w.fin,
     pausa_min: w.pausa || 0,
+    modo: w.modo ?? null,
+    extra_regla: w.extraRegla ?? null,
+    turnos: w.turnos?.length ? JSON.stringify(w.turnos) : null,
   })
   s.cats.forEach((c, i) => {
     rs.categories[c.id] = canonical("categories", {
@@ -301,6 +316,9 @@ export function fromRows(rs: RowSet): FinanceData {
         pausa: Number(ws?.pausa_min ?? 30),
         ...(schedule ? { schedule } : {}),
         ...(Object.keys(weekPlans).length ? { weekPlans } : {}),
+        ...(ws?.modo === "fijo" || ws?.modo === "turnos" ? { modo: ws.modo } : {}),
+        ...(ws?.extra_regla === "turno" || ws?.extra_regla === "semana" ? { extraRegla: ws.extra_regla } : {}),
+        ...turnosOf(ws?.turnos),
       },
       ...(Object.keys(rs.work_day_notes).length
         ? { notes: Object.fromEntries(Object.values(rs.work_day_notes).map((n) => [String(n.fecha), String(n.nota)])) }

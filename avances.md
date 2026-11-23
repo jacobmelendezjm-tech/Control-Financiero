@@ -117,6 +117,13 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - **Apertura nueva**: línea de crecimiento dorada, monedas de luz, rejilla en perspectiva, «Ahorra · Planifica · Crece» → logo → «Tu futuro, en órbita», salida en iris.
 - Menos texto en Inicio y entrada escalonada de tarjetas.
 
+### Turnos rotativos en «Tu jornada»
+
+- La ficha ahora pregunta **Horario fijo o Turnos rotativos**. Con turnos: tus turnos tipo (Mañana, Tarde, Noche… a un toque), horas de contrato a la semana y cuándo cuentan las extras («alargo mi turno» o «paso de mis horas semanales»), con acceso directo al cuadrante.
+- Las horas extra se calculan con esa regla; los turnos tipo aparecen primero al marcar un día o planificar una semana.
+- «Fichar hoy» sin cuadrante abre el día en «Trabajo» para elegir el turno.
+- Base de datos: `20261127000000_work_turnos.sql` (pendiente de ejecutar en Supabase).
+
 ---
 
 ## Plantilla para nuevas entradas

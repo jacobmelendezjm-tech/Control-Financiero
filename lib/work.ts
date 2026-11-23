@@ -1,5 +1,5 @@
 /* Cálculos de jornadas, horas extra y nóminas. Minutos y céntimos siempre enteros. */
-import { daysIn, pad, type DayPlan, type FinanceData, type Payslip, type Schedule, type Shift, type ShiftKind, type WorkCfg } from "@/lib/finance"
+import { daysIn, pad, type DayPlan, type FinanceData, type Payslip, type Schedule, type ExtraRegla, type Shift, type ShiftKind, type Turno, type WorkCfg, type WorkModo } from "@/lib/finance"
 
 export const KIND_LABEL: Record<ShiftKind, string> = {
   trabajo: "Trabajo",
@@ -52,18 +52,37 @@ export function dayTotals(shifts: Shift[], cfg: WorkCfg) {
     t.shifts.push(s)
     if (!t.kinds.includes(s.kind)) t.kinds.push(s.kind)
   }
+  const turnos = modoOf(cfg) === "turnos"
+  const semanal = reglaOf(cfg) === "semana"
   for (const t of Object.values(map)) {
     const manual = t.shifts.filter((s) => s.ex != null)
-    // Con horario por turnos: extra = lo que pasa del turno de ese día (o el día entero si no tocaba trabajar).
     const plan = planFor(t.d, cfg)
     t.extra = manual.length
       ? manual.reduce((a, s) => a + (s.ex || 0), 0)
-      : plan === undefined
-        ? Math.max(0, t.min - Math.round(cfg.horasDia * 60))
-        : plan
-          ? Math.max(0, t.min - planMinutes(plan))
-          : t.min
+      : semanal
+        ? 0 // se reparte abajo, semana a semana
+        : plan === undefined
+          ? Math.max(0, t.min - refMinutes(t, cfg, turnos))
+          : plan
+            ? Math.max(0, t.min - planMinutes(plan)) // lo que pasa del turno de ese día
+            : t.min // no te tocaba trabajar: el día entero es extra
     t.shifts.sort((a, b) => (a.ini || "").localeCompare(b.ini || ""))
+  }
+  if (semanal) {
+    // Extra = lo que pasa de tus horas de contrato de la semana. Se asigna a los días
+    // en los que se supera el tope, para que la suma por días cuadre con la semana.
+    const cap = Math.round(cfg.horasSemana * 60)
+    const byWeek: Record<string, DayTotal[]> = {}
+    for (const t of Object.values(map)) (byWeek[weekStart(t.d)] ||= []).push(t)
+    for (const days of Object.values(byWeek)) {
+      let cum = 0
+      for (const t of days.sort((a, b) => a.d.localeCompare(b.d))) {
+        const before = cum
+        cum += t.min
+        if (t.shifts.some((s) => s.ex != null)) continue
+        t.extra = Math.max(0, cum - cap) - Math.max(0, before - cap)
+      }
+    }
   }
   return map
 }
@@ -195,6 +214,34 @@ export function netPerHour(data: FinanceData) {
 }
 
 /* ---------- horario por turnos ---------- */
+/** Cómo trabaja el usuario. Sin elegir: turnos si ya tiene cuadrante o turnos tipo. */
+export const modoOf = (cfg: WorkCfg): WorkModo =>
+  cfg.modo ?? (scheduleOn(cfg) || Object.keys(cfg.weekPlans || {}).length || cfg.turnos?.length ? "turnos" : "fijo")
+/** Regla de horas extra efectiva (con horario fijo, siempre por día). */
+export const reglaOf = (cfg: WorkCfg): ExtraRegla => (modoOf(cfg) === "turnos" ? cfg.extraRegla ?? "turno" : "turno")
+
+/** Turno tipo que encaja con una jornada (misma hora de entrada, o el más parecido). */
+export function turnoFor(ini: string, cfg: WorkCfg): Turno | undefined {
+  const list = cfg.turnos || []
+  const a = toMin(ini)
+  if (!list.length || a == null) return undefined
+  const dist = (t: Turno) => {
+    const d = Math.abs((toMin(t.ini) ?? 0) - a)
+    return Math.min(d, 1440 - d)
+  }
+  const best = [...list].sort((x, y) => dist(x) - dist(y))[0]
+  return dist(best) <= 120 ? best : undefined
+}
+
+/** Minutos «normales» de un día sin cuadrante: el turno tipo que encaja o la jornada diaria. */
+function refMinutes(t: DayTotal, cfg: WorkCfg, turnos: boolean) {
+  if (turnos) {
+    const first = t.shifts.find((s) => s.kind === "trabajo")
+    const tt = first && turnoFor(first.ini, cfg)
+    if (tt) return planMinutes(tt)
+  }
+  return Math.round(cfg.horasDia * 60)
+}
 export const DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 export const scheduleOn = (cfg: WorkCfg) => !!cfg.schedule?.on && !!cfg.schedule.weeks.length
@@ -227,6 +274,7 @@ export const planMinutes = (p: DayPlan) =>
 
 /** Horas objetivo de la semana que empieza en `ws` (lunes). */
 export function weekTarget(ws: string, cfg: WorkCfg) {
+  if (reglaOf(cfg) === "semana") return Math.round(cfg.horasSemana * 60)
   if (!scheduleOn(cfg) && !cfg.weekPlans?.[ws]) return Math.round(cfg.horasSemana * 60)
   let m = 0
   for (let i = 0; i < 7; i++) {

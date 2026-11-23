@@ -106,6 +106,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 
 - **Pendiente del usuario**:
   - Ejecutar `20261126000000_work_week_plans.sql` (semanas planificadas, «cubro a alguien» y notas del calendario).
+  - Ejecutar `20261127000000_work_turnos.sql` (modo fijo/turnos, regla de extras y turnos tipo). Sin ella falla la subida a la nube.
   - Pegar en Supabase las plantillas nuevas de `supabase/templates/` (Magic Link y Confirm signup, con sus asuntos).
   - Probar la sincronización por filas con su cuenta real en dos dispositivos (no se pudo probar desde aquí: el código llega a su correo).
 - Valorar dominio propio para el remitente de correo.
@@ -118,3 +119,9 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 3. Cambios de datos: tocar a la vez `lib/finance.ts` (tipo y `loadAll`), `lib/cloud-rows.ts` (filas) y, si hace falta, una migración nueva en `supabase/migrations/` (nunca editar una ya aplicada).
 4. Comprobar con `npm run lint`, `npx tsc --noEmit` y `npm run build`, y probar en el navegador a 390 px y a 1440 px.
 5. Commit en español con la línea de coautoría, push a las dos ramas y añadir una entrada en `avances.md`.
+
+## Turnos rotativos (ficha «Tu jornada»)
+
+- `WorkCfg.modo` ("fijo" | "turnos"; si falta, `modoOf` lo deduce), `turnos` (turnos tipo con nombre) y `extraRegla`.
+- Extras con turnos (`dayTotals` en `lib/work.ts`): «turno» = lo que pasa del turno previsto (cuadrante o semana planificada; sin cuadrante, el turno tipo con la hora de entrada más cercana, ±2 h) y el día entero si no tocaba; «semana» = lo que pasa de `horasSemana`, repartido en los días que superan el tope.
+- Los turnos tipo salen primero (con nombre) en los atajos de un toque (`usualShifts`); «Fichar hoy» a turnos sin cuadrante abre el día en «Trabajo».

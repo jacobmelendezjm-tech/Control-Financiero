@@ -28,7 +28,7 @@ import {
 } from "@/lib/work"
 import { cn } from "@/lib/utils"
 import { shiftLabel } from "@/components/finanzas/schedule-dialog"
-import { addDays, type DayTotal } from "@/lib/work"
+import { addDays, modoOf, reglaOf, type DayTotal } from "@/lib/work"
 import type { WorkCfg } from "@/lib/finance"
 
 type ToneKind = "libre" | "trabajo" | "cubre" | "baja" | "none"
@@ -208,6 +208,7 @@ function Jornadas({
   const today = todayStr()
   const clockedToday = !!map[today]
   const hasSchedule = scheduleOn(cfg)
+  const rot = modoOf(cfg) === "turnos"
   const hasAny = hasAnySchedule(cfg)
   const thisMonday = weekStart(today)
   const planned = Object.keys(cfg.weekPlans || {}).filter((k) => k >= thisMonday).sort()
@@ -218,7 +219,9 @@ function Jornadas({
       ? `Fichar hoy · ${todayPlan.ini}–${todayPlan.fin}`
       : todayPlan === null
         ? "Hoy libre · apuntar turno"
-        : `Fichar hoy · ${cfg.ini}–${cfg.fin}`
+        : modoOf(cfg) === "turnos"
+          ? "Fichar hoy · elegir turno"
+          : `Fichar hoy · ${cfg.ini}–${cfg.fin}`
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
@@ -445,9 +448,23 @@ function Jornadas({
 
         <Card>
           <CardContent className="grid gap-2 text-sm">
-            <Eyebrow>{hasSchedule ? "Precio por hora" : "Tu jornada"}</Eyebrow>
-            {hasSchedule ? (
-              <p className="text-muted-foreground">Las horas y las extras se calculan con tu horario por turnos.</p>
+            <Eyebrow>{rot ? "Tus turnos" : "Tu jornada"}</Eyebrow>
+            {rot ? (
+              <>
+                {cfg.turnos?.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {cfg.turnos.map((t) => (
+                      <span key={t.n + t.ini} className="rounded-lg bg-primary/10 px-2 py-1 text-xs">
+                        <b>{t.n}</b> {t.ini}–{t.fin}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <p className="text-muted-foreground">
+                  {String(cfg.horasSemana).replace(".", ",")} h de contrato a la semana · extra{" "}
+                  {reglaOf(cfg) === "semana" ? "al pasar de esas horas" : "al alargar el turno o trabajar sin tocarte"}
+                </p>
+              </>
             ) : (
               <p>
                 {String(cfg.horasDia).replace(".", ",")} h al día · {String(cfg.horasSemana).replace(".", ",")} h a la semana · de{" "}
