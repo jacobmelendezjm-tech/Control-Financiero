@@ -20,6 +20,7 @@ import {
   TargetIcon,
 } from "lucide-react"
 import { toast } from "@/lib/notify"
+import { clearPendingLogin, readPendingLogin } from "@/lib/pending-login"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -221,6 +222,7 @@ export function FinanzasApp() {
       pref: string | null = null
     try {
       local = localStorage.getItem("orbe.cuenta") === "local"
+      if (cloud.user) clearPendingLogin()
       tourDone = localStorage.getItem("orbe.tour") === "done"
       pref = localStorage.getItem("orbe.onboard")
       // Preferencias guardadas en este dispositivo.
@@ -230,7 +232,8 @@ export function FinanzasApp() {
     } catch {}
     const needsProfile = !real.settings.perfil?.done && !pref
     // Sin sesión y sin haber elegido «Continuar sin cuenta»: se pregunta al abrir.
-    const needsAccount = cloud.enabled && !cloud.user && !local
+    const resume = !cloud.user && !!readPendingLogin()
+    const needsAccount = cloud.enabled && !cloud.user && (!local || resume)
     if (!needsProfile && !needsAccount && tourDone) return
     const t = setTimeout(() => {
       firstRun.current = false
@@ -240,7 +243,7 @@ export function FinanzasApp() {
         setObKey((k) => k + 1)
         setOnboard(true)
       } else setTour(true)
-    }, 2900)
+    }, resume ? 150 : 2900)
     return () => clearTimeout(t)
     // Solo una vez, cuando ya están cargados los datos.
     // eslint-disable-next-line react-hooks/exhaustive-deps

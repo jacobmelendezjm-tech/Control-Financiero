@@ -1,5 +1,6 @@
 "use client"
 
+import { clearPendingLogin } from "@/lib/pending-login"
 import * as React from "react"
 import type { RealtimeChannel, SupabaseClient, User } from "@supabase/supabase-js"
 
@@ -146,6 +147,8 @@ export function useCloud(store: FinanceStore) {
       // Fuera del callback: Supabase no admite otras llamadas dentro de él.
       setTimeout(() => {
         const u = session?.user ?? null
+        // Sesión iniciada (con el código o con el enlace del correo): ya no hay nada a medias.
+        if (u) clearPendingLogin()
         if (u?.id !== userRef.current?.id) ready.current = false
         userRef.current = u
         setUser(u)

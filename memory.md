@@ -129,3 +129,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 ## Pregunta de cuenta al abrir
 
 - `finanzas-app.tsx` abre `Onboarding` al cargar (tras `cloud.authReady`) si falta el perfil o si no hay sesión y `localStorage["orbe.cuenta"] !== "local"`. Con el perfil hecho, `accountOnly` muestra solo el paso «cuenta». En el flujo completo, «cuenta» es el primer paso.
+
+## Inicio de sesión a medias
+
+- `lib/pending-login.ts` guarda `orbe.login` ({email, at}, 1 h) al enviar el código; `Onboarding` y `AccountCard` lo retoman en el paso del código; la apertura se salta y el formulario sale a los 150 ms. Se borra al iniciar sesión (`use-cloud`), al verificar o al «Cambiar de correo».

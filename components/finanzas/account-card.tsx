@@ -12,6 +12,7 @@ import { Eyebrow } from "@/components/finanzas/kit"
 import { Spinner } from "@/components/ui/skeleton"
 import type { Cloud, CloudStatus } from "@/hooks/use-cloud"
 import { cn } from "@/lib/utils"
+import { clearPendingLogin, pasteCode, readPendingLogin, savePendingLogin } from "@/lib/pending-login"
 
 export const STATUS_TEXT: Record<CloudStatus, string> = {
   off: "Solo en este dispositivo",
@@ -42,9 +43,11 @@ export function mailSentToast(email: string) {
 
 /** Cuenta opcional: inicio de sesión con código por correo y sincronización. */
 export function AccountCard({ cloud }: { cloud: Cloud }) {
-  const [email, setEmail] = React.useState("")
+  // Si se salió a copiar el código y la app se recargó, se retoma en «escribe el código».
+  const [pending] = React.useState(() => readPendingLogin())
+  const [email, setEmail] = React.useState(() => pending || "")
   const [code, setCode] = React.useState("")
-  const [step, setStep] = React.useState<"email" | "code">("email")
+  const [step, setStep] = React.useState<"email" | "code">(() => (pending ? "code" : "email"))
   const [busy, setBusy] = React.useState(false)
   const [msg, setMsg] = React.useState("")
   const [ask, setAsk] = React.useState<null | "logout" | "delete">(null)
@@ -62,6 +65,7 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
     if (err) return setMsg(err)
     setEmail(v)
     setStep("code")
+    savePendingLogin(v)
     mailSentToast(v)
   }
   const verify = async (e: React.FormEvent) => {
@@ -72,6 +76,7 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
     const err = await cloud.verifyCode(email, code)
     setBusy(false)
     if (err) return setMsg(err)
+    clearPendingLogin()
     setCode("")
     setStep("email")
   }
@@ -185,6 +190,18 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 className="font-heading text-lg tracking-[0.3em]"
               />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                onClick={async () => {
+                  const c = await pasteCode()
+                  if (c) setCode(c)
+                  else setMsg("No he podido leer el código. Mantén pulsado el campo y elige «Pegar».")
+                }}
+              >
+                Pegar
+              </Button>
               <Button type="submit" disabled={busy} className="shrink-0">
                 {busy ? <LoaderCircleIcon className="animate-spin" /> : null} Entrar
               </Button>
@@ -199,6 +216,7 @@ export function AccountCard({ cloud }: { cloud: Cloud }) {
                 onClick={() => {
                   setStep("email")
                   setMsg("")
+                  clearPendingLogin()
                 }}
               >
                 Cambiar de correo

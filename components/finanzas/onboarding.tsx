@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
 import { Spinner } from "@/components/ui/skeleton"
 import { mailSentToast } from "@/components/finanzas/account-card"
+import { clearPendingLogin, pasteCode, readPendingLogin, savePendingLogin } from "@/lib/pending-login"
 import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Objetivo } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
@@ -79,6 +80,8 @@ export function Onboarding({
   const cfg = data.work.cfg
   // Se decide al abrir: si ya hay sesión, no se pregunta.
   const [askAccount] = React.useState(() => !!cloud?.enabled && !cloud.signedIn)
+  // Si se salió a copiar el código y la app se recargó, se retoma donde estaba.
+  const [pending] = React.useState(() => (askAccount ? readPendingLogin() : null))
   const [step, setStep] = React.useState<StepId>(() => (askAccount || accountOnly ? "cuenta" : "hola"))
   const [nombre, setNombre] = React.useState(data.settings.nombre || "")
   const [cobro, setCobro] = React.useState<Cobro | undefined>(p.cobro)
@@ -96,10 +99,10 @@ export function Onboarding({
   const [metaN, setMetaN] = React.useState("")
   const [metaO, setMetaO] = React.useState("")
   // Paso «cuenta»: crear cuenta con el correo o seguir solo en el dispositivo.
-  const [modo, setModo] = React.useState<"nube" | "local" | null>(null)
-  const [email, setEmail] = React.useState("")
+  const [modo, setModo] = React.useState<"nube" | "local" | null>(() => (pending ? "nube" : null))
+  const [email, setEmail] = React.useState(() => pending || "")
   const [code, setCode] = React.useState("")
-  const [codeSent, setCodeSent] = React.useState(false)
+  const [codeSent, setCodeSent] = React.useState(() => !!pending)
   const [verified, setVerified] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [err, setErr] = React.useState("")
@@ -211,6 +214,7 @@ export function Onboarding({
     if (e) return setErr(e)
     setEmail(v)
     setCodeSent(true)
+    savePendingLogin(v)
     mailSentToast(v)
   }
   const verify = async () => {
@@ -221,6 +225,7 @@ export function Onboarding({
     const e = await cloud.verifyCode(email, code)
     setBusy(false)
     if (e) return setErr(e)
+    clearPendingLogin()
     setVerified(true)
     if (accountOnly) setTimeout(onLater, 1200)
     else setTimeout(() => setStep("hola"), 1200)
@@ -563,6 +568,18 @@ export function Onboarding({
                           }}
                           className="h-12 font-heading text-lg tracking-[0.25em]"
                         />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 shrink-0 rounded-full px-4"
+                          onClick={async () => {
+                            const c = await pasteCode()
+                            if (c) setCode(c)
+                            else setErr("No he podido leer el código. Mantén pulsado el campo y elige «Pegar».")
+                          }}
+                        >
+                          Pegar
+                        </Button>
                         <Button type="button" className="h-12 shrink-0 rounded-full px-5" disabled={busy} onClick={() => void verify()}>
                           {busy ? <Spinner /> : null} Verificar
                         </Button>
@@ -578,6 +595,7 @@ export function Onboarding({
                             setCodeSent(false)
                             setCode("")
                             setErr("")
+                            clearPendingLogin()
                           }}
                         >
                           Cambiar de correo

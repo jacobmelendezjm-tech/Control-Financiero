@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { OrbeMark } from "@/components/finanzas/logo"
 import { SilkShader } from "@/components/silk-shader"
+import { readPendingLogin } from "@/lib/pending-login"
 import { cn } from "@/lib/utils"
 
 const KEY = "orbe.splash"
@@ -41,7 +42,8 @@ export function Splash() {
     if (seenRef.current === null) {
       seenRef.current = false
       try {
-        seenRef.current = sessionStorage.getItem(KEY) === "1"
+        // Vuelve de copiar el código del correo: directo al formulario.
+        seenRef.current = sessionStorage.getItem(KEY) === "1" || !!readPendingLogin()
         sessionStorage.setItem(KEY, "1")
       } catch {}
     }

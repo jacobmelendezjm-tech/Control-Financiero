@@ -129,6 +129,11 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Al abrir la app sin sesión aparece **«¿Entras con tu cuenta?»**: «Iniciar sesión o crear cuenta» (correo + código) o «Continuar sin cuenta» (con el aviso de que los datos se quedan en el móvil).
 - Antes estaba al final del formulario y solo lo veían los usuarios nuevos. Ahora sale a todo el que no tenga sesión y no haya elegido «Continuar sin cuenta» (`orbe.cuenta = local`); si ya tiene el perfil hecho, sale solo esa pregunta.
 
+### Iniciar sesión sin bucles al copiar el código
+
+- En el móvil, al salir a copiar el código del correo, el sistema cerraba la app y al volver empezaba de cero. Ahora el correo pendiente se guarda en el dispositivo (`lib/pending-login.ts`, caduca en 1 hora) y al volver la app abre directamente «escribe el código», sin la animación de apertura.
+- Botón **Pegar** junto al código (en el formulario y en Cuenta y nube).
+
 ---
 
 ## Plantilla para nuevas entradas
