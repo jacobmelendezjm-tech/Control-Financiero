@@ -172,3 +172,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - Informe del pentest en `SEGURIDAD.md`. Cabeceras (CSP, X-Frame-Options, Permissions-Policy) en `next.config.ts`: si se añade un servicio externo (analítica, pagos, fuentes de Google…), hay que añadirlo a la CSP o se bloqueará.
 - Recordatorios: solo endpoints de FCM, Mozilla, Microsoft y Apple (SQL `orbe_push_endpoint_ok` y `PUSH_HOST` en el cron); enlaces de avisos siempre internos.
 - Antes de dar por buena una migración con funciones, probarla en PGlite (había un banco de pruebas en el scratchpad de la sesión del 23/11/2026).
+
+## Pantalla de entrada
+
+- `LoginGate` (`components/finanzas/login-gate.tsx`) se muestra si hay nube, no hay sesión y no se eligió «sin cuenta» (`orbe.cuenta=local`). Al pasar de tener usuario a no tenerlo (cerrar sesión/borrar cuenta) se borra `orbe.cuenta` y vuelve a salir. El efecto de bienvenida/tutorial espera a que se cierre (`gate` en sus dependencias).

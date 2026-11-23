@@ -199,6 +199,12 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - En escritorio la cabecera es una píldora oscura flotante y centrada (título de la sección y la nube), en vez de una franja que no llegaba a los bordes. Los avisos de la isla dinámica bajan justo debajo de ella. En móvil, sin cambios.
 
+### Pantalla de entrada (inicio de sesión)
+
+- Sin sesión, la app queda detrás de una pantalla completa con Orbi: **Iniciar sesión o crear cuenta** (correo y código, reutiliza `LoginForm` de `account-card.tsx`) o **Continuar sin cuenta** (se recuerda en el dispositivo). Componente `components/finanzas/login-gate.tsx`.
+- Al **cerrar sesión** o borrar la cuenta se vuelve siempre a esta pantalla. Sin cuenta, en «Cuenta y nube» hay «Salir a la pantalla de inicio».
+- El formulario de bienvenida y el tutorial esperan a que se cierre la pantalla de entrada; el paso de la cuenta ya no se repite en la bienvenida.
+
 ---
 
 ## Plantilla para nuevas entradas

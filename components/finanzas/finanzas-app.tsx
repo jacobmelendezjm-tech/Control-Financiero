@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { toast } from "@/lib/notify"
-import { clearPendingLogin, readPendingLogin } from "@/lib/pending-login"
+import { clearPendingLogin } from "@/lib/pending-login"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -48,6 +48,7 @@ import { CloudBadge } from "@/components/finanzas/cloud-badge"
 import { Onboarding, type OnboardAnswers } from "@/components/finanzas/onboarding"
 import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
+import { LoginGate } from "@/components/finanzas/login-gate"
 import { SilkShader } from "@/components/silk-shader"
 import { DynamicIsland } from "@/components/dynamic-island"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
@@ -224,6 +225,45 @@ export function FinanzasApp() {
   const [menu, setMenu] = React.useState(false)
   const [buddyOn, setBuddyOn] = React.useState(true)
   const [onboard, setOnboard] = React.useState(false)
+  /*
+   * Pantalla de entrada: sin sesión, la app queda detrás hasta elegir «con cuenta» o «sin cuenta».
+   * «sin cuenta» se recuerda en este dispositivo; al cerrar sesión se olvida y vuelve a salir.
+   */
+  const [localChoice, setLocalChoice] = React.useState<boolean | null>(null)
+  React.useEffect(() => {
+    let v = false
+    try {
+      v = localStorage.getItem("orbe.cuenta") === "local"
+    } catch {}
+    // Solo se sabe en el navegador.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalChoice(v)
+  }, [])
+  const hadUser = React.useRef(false)
+  React.useEffect(() => {
+    if (cloud.user) hadUser.current = true
+    else if (hadUser.current) {
+      // Acaba de cerrar sesión (o borrar la cuenta): vuelve a la pantalla de entrada.
+      hadUser.current = false
+      try {
+        localStorage.removeItem("orbe.cuenta")
+      } catch {}
+      setLocalChoice(false)
+      setOnboard(false)
+      setTour(false)
+    }
+  }, [cloud.user])
+  const gate = loaded && cloud.enabled && localChoice === false && !cloud.user
+  const gateSeen = React.useRef(false)
+  React.useEffect(() => {
+    if (gate) gateSeen.current = true
+  }, [gate])
+  const continueLocal = () => {
+    try {
+      localStorage.setItem("orbe.cuenta", "local")
+    } catch {}
+    setLocalChoice(true)
+  }
   /** El formulario se abre solo para la pregunta de la cuenta. */
   const [obAccount, setObAccount] = React.useState(false)
   const [obKey, setObKey] = React.useState(0)
@@ -233,7 +273,7 @@ export function FinanzasApp() {
 
   /* Al abrir: primero el formulario de bienvenida, después el tutorial (una sola vez cada uno). */
   React.useEffect(() => {
-    if (!loaded || !cloud.authReady || firstRun.current === false) return
+    if (!loaded || !cloud.authReady || firstRun.current === false || gate || localChoice === null) return
     let tourDone = true,
       local = false,
       pref: string | null = null
@@ -248,10 +288,10 @@ export function FinanzasApp() {
       setObPref(pref)
     } catch {}
     const needsProfile = !profileComplete(real.settings.perfil) && !pref
-    // Sin sesión y sin haber elegido «Continuar sin cuenta»: se pregunta al abrir.
-    const resume = !cloud.user && !!readPendingLogin()
-    const needsAccount = cloud.enabled && !cloud.user && (!local || resume)
-    if (!needsProfile && !needsAccount && tourDone) return
+    // La cuenta ya se eligió en la pantalla de entrada; aquí solo el perfil y el tutorial.
+    void local
+    const needsAccount = false
+    if (!needsProfile && tourDone) return
     const t = setTimeout(() => {
       firstRun.current = false
       if (location.hash && location.hash !== "#inicio") location.hash = "inicio"
@@ -260,11 +300,11 @@ export function FinanzasApp() {
         setObKey((k) => k + 1)
         setOnboard(true)
       } else setTour(true)
-    }, resume ? 150 : 2900)
+    }, gateSeen.current ? 500 : 2900)
     return () => clearTimeout(t)
-    // Solo una vez, cuando ya están cargados los datos.
+    // Solo una vez, cuando ya están cargados los datos (y tras la pantalla de entrada).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, cloud.authReady])
+  }, [loaded, cloud.authReady, gate, localChoice])
   const savePref = (v: string) => {
     setObPref(v)
     try {
@@ -369,8 +409,8 @@ export function FinanzasApp() {
   const close = () => setSheet(null)
   // Sin smooth scroll de fondo mientras hay un diálogo abierto.
   React.useEffect(() => {
-    setScrollLocked(!!sheet || tour || onboard)
-  }, [sheet, tour, onboard])
+    setScrollLocked(!!sheet || tour || onboard || gate)
+  }, [sheet, tour, onboard, gate])
 
   /* Navegación con #hash para que el botón atrás del móvil funcione. */
   React.useEffect(() => {
@@ -935,6 +975,7 @@ export function FinanzasApp() {
         <div className="absolute inset-0 bg-background/[0.86] dark:bg-background/[0.8]" />
       </div>
       <Splash />
+      {gate ? <LoginGate cloud={cloud} onLocal={continueLocal} /> : null}
       <DynamicIsland busy={!!cloud.user && cloud.status === "syncing"} />
       <OrbiTour open={tour} onClose={() => setTour(false)} />
       <ConflictDialog cloud={cloud} />
