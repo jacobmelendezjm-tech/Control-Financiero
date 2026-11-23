@@ -5,6 +5,7 @@
  */
 import {
   byDate,
+  cleanIntereses,
   loadAll,
   normalizeTurnos,
   type DayPlan,
@@ -53,7 +54,7 @@ export const SINGLE: Table[] = ["profiles", "work_settings", "work_schedules"]
 export const SOFT: Table[] = ["categories", "recurring", "goals", "goal_contributions", "transactions", "shifts", "payslips"]
 
 const COLS: Record<Table, string[]> = {
-  profiles: ["nombre", "saldo_inicial", "hormiga_max", "cobro", "neto_aprox", "dia_cobro", "objetivo", "ahorro_mes", "onboarding_done"],
+  profiles: ["nombre", "saldo_inicial", "hormiga_max", "cobro", "neto_aprox", "dia_cobro", "objetivo", "ahorro_mes", "onboarding_done", "intereses"],
   work_settings: ["horas_dia", "horas_semana", "precio_hora", "precio_extra", "hora_entrada", "hora_salida", "pausa_min", "modo", "extra_regla", "turnos"],
   categories: ["id", "nombre", "tipo", "grupo", "orden", "presupuesto"],
   recurring: ["id", "nombre", "tipo", "importe", "category_id", "dia", "activo"],
@@ -127,6 +128,7 @@ export function toRows(d: FinanceData): RowSet {
     objetivo: p.objetivo ?? null,
     ahorro_mes: p.ahorroMes ?? null,
     onboarding_done: !!p.done,
+    intereses: p.intereses?.length ? p.intereses.join(",") : null,
   })
   const w = d.work.cfg
   rs.work_settings.me = canonical("work_settings", {
@@ -294,6 +296,9 @@ export function fromRows(rs: RowSet): FinanceData {
         ...(pr?.dia_cobro != null ? { diaCobro: Number(pr.dia_cobro) } : {}),
         ...(pr?.objetivo ? { objetivo: pr.objetivo as never } : {}),
         ...(pr?.ahorro_mes != null ? { ahorroMes: Number(pr.ahorro_mes) } : {}),
+        ...(typeof pr?.intereses === "string" && cleanIntereses(pr.intereses.split(",")).length
+          ? { intereses: cleanIntereses(pr.intereses.split(",")) }
+          : {}),
       },
     },
     goals: Object.values(rs.goals).map((g) => ({

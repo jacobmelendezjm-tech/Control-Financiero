@@ -68,7 +68,14 @@ export interface Perfil {
   diaCobro?: number
   objetivo?: Objetivo
   ahorroMes?: number // céntimos
+  /** Lo que más le interesa: ordena los accesos y las tarjetas de Inicio. */
+  intereses?: Interes[]
 }
+export type Interes = "gastos" | "ahorro" | "horas" | "nominas" | "hormiga" | "presupuesto"
+export const INTERESES: Interes[] = ["gastos", "ahorro", "horas", "nominas", "hormiga", "presupuesto"]
+/** Intereses válidos, sin repetir y en el orden en que los eligió. */
+export const cleanIntereses = (x: unknown): Interes[] =>
+  Array.isArray(x) ? [...new Set(x.filter((i): i is Interes => INTERESES.includes(i)))] : []
 
 /* ---------- trabajo ---------- */
 export type ShiftKind = "trabajo" | "vacaciones" | "festivo" | "baja" | "libre"
@@ -357,6 +364,11 @@ export function normalizeSettings(s: unknown): Settings {
   out.hormigaMax = Number(out.hormigaMax) || 1000
   out.nombre = typeof out.nombre === "string" ? out.nombre.slice(0, 30) : ""
   out.perfil = out.perfil && typeof out.perfil === "object" ? out.perfil : {}
+  if (out.perfil.intereses !== undefined) {
+    const it = cleanIntereses(out.perfil.intereses)
+    if (it.length) out.perfil.intereses = it
+    else delete out.perfil.intereses
+  }
   return out
 }
 export const byDate = (a: Tx, b: Tx) => b.d.localeCompare(a.d) || (b.k || 0) - (a.k || 0)

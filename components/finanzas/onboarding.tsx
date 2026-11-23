@@ -11,7 +11,7 @@ import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
 import { Spinner } from "@/components/ui/skeleton"
 import { mailSentToast } from "@/components/finanzas/account-card"
 import { clearPendingLogin, pasteCode, readPendingLogin, savePendingLogin } from "@/lib/pending-login"
-import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Objetivo } from "@/lib/finance"
+import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Interes, type Objetivo } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
 export interface OnboardAnswers {
@@ -30,9 +30,10 @@ export interface OnboardAnswers {
   ahorroMes?: number
   metaNombre?: string
   metaObj?: number
+  intereses: Interes[]
 }
 
-type StepId = "hola" | "nombre" | "cobro" | "sueldo" | "jornada" | "saldo" | "objetivo" | "cuenta" | "listo"
+type StepId = "hola" | "nombre" | "intereses" | "cobro" | "sueldo" | "jornada" | "saldo" | "objetivo" | "cuenta" | "listo"
 
 /** Lo que el formulario necesita de la cuenta (hooks/use-cloud). */
 export interface OnboardCloud {
@@ -47,6 +48,14 @@ const COBROS: { v: Cobro; l: string; d: string }[] = [
   { v: "horas", l: "Por horas", d: "Cobro según las horas que hago" },
   { v: "autonomo", l: "Autónomo", d: "Facturo por mi cuenta" },
   { v: "no", l: "Ahora no trabajo", d: "Estudio, busco trabajo…" },
+]
+const INTERES_OPC: { v: Interes; l: string; e: string }[] = [
+  { v: "gastos", l: "Controlar mis gastos", e: "💸" },
+  { v: "ahorro", l: "Ahorrar", e: "🐷" },
+  { v: "horas", l: "Horas, turnos y extras", e: "⏱️" },
+  { v: "nominas", l: "Mis nóminas e IRPF", e: "🧾" },
+  { v: "hormiga", l: "Gastos hormiga", e: "🐜" },
+  { v: "presupuesto", l: "Presupuestos", e: "🎯" },
 ]
 const OBJETIVOS: { v: Objetivo; l: string; e: string }[] = [
   { v: "ahorrar", l: "Ahorrar para algo", e: "🎯" },
@@ -79,11 +88,21 @@ export function Onboarding({
   const p = data.settings.perfil || {}
   const cfg = data.work.cfg
   // Se decide al abrir: si ya hay sesión, no se pregunta.
-  const [askAccount] = React.useState(() => !!cloud?.enabled && !cloud.signedIn)
+  const [askAccount] = React.useState(() => {
+    if (!cloud?.enabled || cloud.signedIn) return false
+    if (accountOnly || readPendingLogin()) return true
+    // Ya eligió «Continuar sin cuenta»: no se le vuelve a preguntar.
+    try {
+      return localStorage.getItem("orbe.cuenta") !== "local"
+    } catch {
+      return true
+    }
+  })
   // Si se salió a copiar el código y la app se recargó, se retoma donde estaba.
   const [pending] = React.useState(() => (askAccount ? readPendingLogin() : null))
   const [step, setStep] = React.useState<StepId>(() => (askAccount || accountOnly ? "cuenta" : "hola"))
   const [nombre, setNombre] = React.useState(data.settings.nombre || "")
+  const [intereses, setIntereses] = React.useState<Interes[]>(p.intereses || [])
   const [cobro, setCobro] = React.useState<Cobro | undefined>(p.cobro)
   const [neto, setNeto] = React.useState(p.neto ? fmtPlain(p.neto) : "")
   const [dia, setDia] = React.useState(String(p.diaCobro || ""))
@@ -116,6 +135,7 @@ export function Onboarding({
     ...(askAccount ? (["cuenta"] as StepId[]) : []),
     "hola",
     "nombre",
+    "intereses",
     "cobro",
     ...(cobro && cobro !== "no" ? (["sueldo"] as StepId[]) : []),
     ...(works ? (["jornada"] as StepId[]) : []),
@@ -163,6 +183,7 @@ export function Onboarding({
     ahorroMes: ahorro.trim() ? parsePos(ahorro) || undefined : undefined,
     metaNombre: metaN.trim().slice(0, 40) || undefined,
     metaObj: metaO.trim() ? parsePos(metaO) || undefined : undefined,
+    intereses,
   })
 
   function validate(): string {
@@ -239,6 +260,8 @@ export function Onboarding({
       ? { mood: "wave", say: "¡Hola! ¿Me cuentas un poco de ti?" }
       : step === "nombre"
         ? { mood: "happy", say: "Para saludarte como toca." }
+        : step === "intereses"
+          ? { mood: "wow", say: "Así pongo delante lo tuyo." }
         : step === "cobro"
           ? { mood: "think", say: "Así adapto la parte de trabajo." }
           : step === "sueldo"
@@ -308,8 +331,8 @@ export function Onboarding({
               <>
                 <Title>Hagamos Orbe a tu medida</Title>
                 <p className="text-[15px] text-muted-foreground">
-                  Unas preguntas rápidas sobre tu trabajo, tu sueldo y tus metas. Así tu saldo será real, ficharás con tu horario y mis
-                  consejos irán contigo. Puedes saltar cualquier pregunta.
+                  Unas preguntas rápidas sobre lo que te interesa, tu trabajo y tus metas. Así Inicio pone delante lo tuyo, tu saldo
+                  es real y mis consejos van contigo. Puedes saltar cualquier pregunta.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   ⏱ Menos de un minuto · {verified ? "☁️ Se guarda en tu cuenta" : "🔒 Se guarda en este dispositivo"}
@@ -329,6 +352,36 @@ export function Onboarding({
                   onChange={(e) => setNombre(e.target.value)}
                   className="h-12 text-lg"
                 />
+              </>
+            ) : null}
+
+            {step === "intereses" ? (
+              <>
+                <Title>{name ? `${name}, ¿qué` : "¿Qué"} te interesa más?</Title>
+                <p className="-mt-2 text-sm text-muted-foreground">Elige todas las que quieras. Lo pondré primero en Inicio.</p>
+                <div role="group" aria-label="Tus intereses" className="grid grid-cols-2 gap-2">
+                  {INTERES_OPC.map((o, k) => {
+                    const on = intereses.includes(o.v)
+                    return (
+                      <button
+                        key={o.v}
+                        type="button"
+                        aria-pressed={on}
+                        data-autofocus={k === 0 ? "" : undefined}
+                        onClick={() => setIntereses((l) => (on ? l.filter((x) => x !== o.v) : [...l, o.v]))}
+                        className={cn(
+                          "flex min-h-14 items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-medium ring-1 ring-foreground/10 transition-all active:scale-[0.97]",
+                          on ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
+                        )}
+                      >
+                        <span aria-hidden className="text-xl">
+                          {o.e}
+                        </span>
+                        <span className="leading-tight">{o.l}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </>
             ) : null}
 
@@ -611,6 +664,7 @@ export function Onboarding({
               <>
                 <Title>{name ? `¡Listo, ${name}!` : "¡Listo!"}</Title>
                 <ul className="grid gap-1.5 text-sm text-muted-foreground">
+                  <Summary on={intereses.length > 0}>Inicio pone delante lo que te interesa</Summary>
                   <Summary on={!!cobro && cobro !== "no"}>Tu trabajo y tu sueldo quedan configurados</Summary>
                   <Summary on={recordar && !!netoC}>Te recordaré apuntar la nómina cada mes</Summary>
                   <Summary on={!!saldo.trim()}>Tu saldo empieza con tu dinero real</Summary>

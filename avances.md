@@ -134,6 +134,13 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - En el móvil, al salir a copiar el código del correo, el sistema cerraba la app y al volver empezaba de cero. Ahora el correo pendiente se guarda en el dispositivo (`lib/pending-login.ts`, caduca en 1 hora) y al volver la app abre directamente «escribe el código», sin la animación de apertura.
 - Botón **Pegar** junto al código (en el formulario y en Cuenta y nube).
 
+### Formulario de intereses y Inicio personalizado
+
+- Nuevo paso **«¿Qué te interesa más?»** (gastos, ahorro, horas y turnos, nóminas, gastos hormiga, presupuestos; varios a la vez).
+- Inicio se adapta: los accesos rápidos siguen el orden de tus intereses y la tarjeta de Trabajo solo sale si trabajas o te interesan las horas.
+- El formulario vuelve a salir una vez a quien lo hizo sin intereses (clave `orbe.onboard2`). Si ya elegiste «Continuar sin cuenta», no se vuelve a preguntar por la cuenta.
+- Base de datos: `20261128000000_profiles_intereses.sql` (pendiente de ejecutar).
+
 ---
 
 ## Plantilla para nuevas entradas

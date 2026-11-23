@@ -91,6 +91,7 @@ import {
   type FinanceData,
   type Goal,
   type Payslip,
+  type Perfil,
   type Recurring,
   type DayPlan,
   type Schedule,
@@ -149,6 +150,11 @@ type Sheet =
   | { kind: "weekplan"; week?: string }
   | { kind: "day"; date: string; fichar?: boolean }
   | null
+
+/** Clave de «lo hago luego» del formulario. Versión 2: incluye la pregunta de intereses. */
+const OB_KEY = "orbe.onboard2"
+/** Perfil completo: formulario hecho y con intereses elegidos. */
+const profileComplete = (p?: Perfil) => !!p?.done && !!p.intereses?.length
 
 /* ---------- operaciones sobre un borrador ---------- */
 function upsertTx(d: FinanceData, nt: Tx, oldM: string | null) {
@@ -224,13 +230,13 @@ export function FinanzasApp() {
       local = localStorage.getItem("orbe.cuenta") === "local"
       if (cloud.user) clearPendingLogin()
       tourDone = localStorage.getItem("orbe.tour") === "done"
-      pref = localStorage.getItem("orbe.onboard")
+      pref = localStorage.getItem(OB_KEY)
       // Preferencias guardadas en este dispositivo.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBuddyOn(localStorage.getItem("orbe.buddy") !== "off")
       setObPref(pref)
     } catch {}
-    const needsProfile = !real.settings.perfil?.done && !pref
+    const needsProfile = !profileComplete(real.settings.perfil) && !pref
     // Sin sesión y sin haber elegido «Continuar sin cuenta»: se pregunta al abrir.
     const resume = !cloud.user && !!readPendingLogin()
     const needsAccount = cloud.enabled && !cloud.user && (!local || resume)
@@ -251,7 +257,7 @@ export function FinanzasApp() {
   const savePref = (v: string) => {
     setObPref(v)
     try {
-      localStorage.setItem("orbe.onboard", v)
+      localStorage.setItem(OB_KEY, v)
     } catch {}
   }
   const openOnboarding = () => {
@@ -268,7 +274,7 @@ export function FinanzasApp() {
   const onboardLater = () => {
     setOnboard(false)
     if (obAccount) return
-    if (!real.settings.perfil?.done) savePref("later")
+    if (!profileComplete(real.settings.perfil)) savePref("later")
     setTimeout(() => orbiSay("¡Sin problema! Cuando quieras personalizamos Orbe desde la tarjeta de Inicio o desde «Más».", "happy"), 450)
   }
   const onboardFinish = (a: OnboardAnswers, withTour: boolean) => {
@@ -285,6 +291,7 @@ export function FinanzasApp() {
         diaCobro: a.diaCobro ?? d.settings.perfil?.diaCobro,
         objetivo: a.objetivo ?? d.settings.perfil?.objetivo,
         ahorroMes: a.ahorroMes ?? d.settings.perfil?.ahorroMes,
+        ...(a.intereses.length ? { intereses: a.intereses } : {}),
       }
       // Recordatorio mensual de la nómina (un fijo de ingreso que se apunta con un toque).
       if (a.recordar && a.neto) {
@@ -999,7 +1006,7 @@ export function FinanzasApp() {
                   onRegisterRec={(r) => registerRecs([r], CUR())}
                   onRegisterAll={(rs) => registerRecs(rs, CUR())}
                   profileCard={
-                    !real.settings.perfil?.done && obPref === "later"
+                    !profileComplete(real.settings.perfil) && obPref === "later"
                       ? { onStart: openOnboarding, onDismiss: () => savePref("hidden") }
                       : undefined
                   }

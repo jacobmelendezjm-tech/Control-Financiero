@@ -106,6 +106,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 
 - **Pendiente del usuario**:
   - Ejecutar `20261126000000_work_week_plans.sql` (semanas planificadas, «cubro a alguien» y notas del calendario).
+  - Ejecutar `20261128000000_profiles_intereses.sql` (intereses del perfil). Sin ella falla la subida a la nube.
   - Ejecutar `20261127000000_work_turnos.sql` (modo fijo/turnos, regla de extras y turnos tipo). Sin ella falla la subida a la nube.
   - Pegar en Supabase las plantillas nuevas de `supabase/templates/` (Magic Link y Confirm signup, con sus asuntos).
   - Probar la sincronización por filas con su cuenta real en dos dispositivos (no se pudo probar desde aquí: el código llega a su correo).
@@ -133,3 +134,9 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 ## Inicio de sesión a medias
 
 - `lib/pending-login.ts` guarda `orbe.login` ({email, at}, 1 h) al enviar el código; `Onboarding` y `AccountCard` lo retoman en el paso del código; la apertura se salta y el formulario sale a los 150 ms. Se borra al iniciar sesión (`use-cloud`), al verificar o al «Cambiar de correo».
+
+## Intereses y personalización
+
+- `Perfil.intereses` (`Interes[]`, en el orden elegido; `cleanIntereses`). Perfil completo = `done` + intereses (`profileComplete` en `finanzas-app.tsx`); clave de «luego» `orbe.onboard2`.
+- Inicio (`home-view.tsx`): accesos rápidos por intereses; tarjeta de Trabajo solo si `works`.
+- El paso «cuenta» del formulario no sale si `orbe.cuenta = local` (salvo inicio de sesión a medias).
