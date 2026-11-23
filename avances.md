@@ -183,6 +183,7 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Tercera moneda: **Dólar estadounidense** (`US$ 1.250,50`, con «US$» para no confundirlo con el peso). En la nómina habla de «Impuestos» y «Aportes» en general.
 - En Ajustes las monedas van en lista y en la bienvenida en tres botones (Euro, Peso arg., Dólar).
 - Migración `20261130000000_profiles_moneda_usd.sql` (ejecutada).
+- La moneda no se encontraba (solo estaba en Ajustes y copias): ahora está también en **Cuenta y preferencias** y en el menú hay una entrada **Moneda** que lleva directo a ella (`components/finanzas/moneda-picker.tsx`).
 
 ---
 

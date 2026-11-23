@@ -8,6 +8,7 @@ import {
   ChartPieIcon,
   ChevronRightIcon,
   ClockIcon,
+  CoinsIcon,
   DownloadIcon,
   FileTextIcon,
   HouseIcon,
@@ -42,7 +43,7 @@ type Go =
   | "nominas"
   | "ajustes"
 
-export type MenuSection = "cuenta" | "recordatorios" | "orbi" | "instalar"
+export type MenuSection = "cuenta" | "moneda" | "recordatorios" | "orbi" | "instalar"
 
 function Row({
   icon: Icon,
@@ -169,6 +170,7 @@ export function SideMenu({
             </Group>
             <Group title="App">
               <Row icon={UserRoundIcon} label="Cuenta y nube" onClick={section("cuenta")} />
+              <Row icon={CoinsIcon} label="Moneda" onClick={section("moneda")} />
               <Row icon={BellIcon} label="Recordatorios" onClick={section("recordatorios")} />
               <Row icon={SparklesIcon} label="Orbi y tutorial" onClick={section("orbi")} />
               {canInstall ? <Row icon={DownloadIcon} label="Instalar la app" onClick={section("instalar")} /> : null}

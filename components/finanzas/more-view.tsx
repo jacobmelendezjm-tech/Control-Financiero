@@ -20,6 +20,8 @@ import { RemindersCard } from "@/components/finanzas/reminders-card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Eyebrow } from "@/components/finanzas/kit"
+import { MonedaPicker } from "@/components/finanzas/moneda-picker"
+import type { Moneda } from "@/lib/finance"
 import { LegalLinks } from "@/components/legal-links"
 
 export type MoreGo = "movimientos" | "resumen" | "presupuesto" | "metas" | "hormiga" | "nominas" | "ajustes"
@@ -27,6 +29,8 @@ export type MoreGo = "movimientos" | "resumen" | "presupuesto" | "metas" | "horm
 
 export function MoreView({
   nombre,
+  moneda,
+  onMoneda,
   pwa,
   onNombre,
   buddyOn,
@@ -37,6 +41,8 @@ export function MoreView({
   reminders,
 }: {
   nombre: string
+  moneda: Moneda
+  onMoneda: (m: Moneda) => void
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
   onGo?: (v: MoreGo) => void
   onNombre: (n: string) => void
@@ -140,6 +146,16 @@ export function MoreView({
                 Guardar
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card id="sec-moneda" className="scroll-mt-24">
+          <CardContent className="grid gap-3">
+            <Eyebrow>Moneda</Eyebrow>
+            <p className="-mt-1 text-sm text-muted-foreground">
+              En la que apuntas y ves todos tus importes. Cambiarla no convierte lo que ya tienes apuntado.
+            </p>
+            <MonedaPicker value={moneda} onChange={onMoneda} />
           </CardContent>
         </Card>
 

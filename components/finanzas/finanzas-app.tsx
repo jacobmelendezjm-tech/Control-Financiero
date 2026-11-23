@@ -1072,6 +1072,8 @@ export function FinanzasApp() {
               ) : view === "mas" ? (
                 <MoreView
                   nombre={real.settings.nombre}
+                  moneda={real.settings.moneda}
+                  onMoneda={cambiarMoneda}
                   pwa={pwa}
                   onGo={(v) => go(v)}
                   onNombre={setNombre}
