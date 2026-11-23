@@ -9,7 +9,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
-  EllipsisIcon,
+  MenuIcon,
   FileTextIcon,
   HouseIcon,
   ListIcon,
@@ -35,16 +35,17 @@ import {
 } from "@/components/finanzas/dialogs"
 import { HomeView } from "@/components/finanzas/home-view"
 import { HomeSkeleton } from "@/components/finanzas/app-skeleton"
-import { Spinner } from "@/components/ui/skeleton"
 import { HormigaView } from "@/components/finanzas/hormiga-view"
 import { OrbeWordmark } from "@/components/finanzas/logo"
 import { MoreView } from "@/components/finanzas/more-view"
+import { SideMenu, type MenuSection } from "@/components/finanzas/side-menu"
+import { CloudBadge } from "@/components/finanzas/cloud-badge"
 import { Onboarding, type OnboardAnswers } from "@/components/finanzas/onboarding"
 import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
-import { ThemeToggle } from "@/components/finanzas/theme-toggle"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
 import { ScheduleDialog, WeekPlanDialog } from "@/components/finanzas/schedule-dialog"
+import { DayDialog, type DayResult } from "@/components/finanzas/day-dialog"
 import { WorkView } from "@/components/finanzas/work-view"
 import {
   AjustesView,
@@ -56,9 +57,9 @@ import {
   type Filters,
 } from "@/components/finanzas/views"
 import { useFinance } from "@/hooks/use-finance"
-import { useCloud, type CloudStatus } from "@/hooks/use-cloud"
+import { useCloud } from "@/hooks/use-cloud"
 import { useReminders } from "@/hooks/use-reminders"
-import { ConflictDialog, STATUS_TEXT } from "@/components/finanzas/account-card"
+import { ConflictDialog } from "@/components/finanzas/account-card"
 import { orbiSay, pick } from "@/lib/orbi"
 import { scrollToY, setScrollLocked } from "@/lib/scroll"
 import { usePwa } from "@/hooks/use-pwa"
@@ -95,7 +96,7 @@ import {
   type TxType,
   type WorkCfg,
 } from "@/lib/finance"
-import { dayTotals, fmtMin, monthDays, planFor, shiftMinutes, summarize } from "@/lib/work"
+import { addDays, dayTotals, fmtMin, monthDays, planFor, shiftMinutes, summarize, weekStart } from "@/lib/work"
 import { cn } from "@/lib/utils"
 
 const VIEWS = [
@@ -121,19 +122,13 @@ const TITLES: Record<View, string> = {
   hormiga: "Gastos hormiga",
   trabajo: "Trabajo",
   nominas: "Trabajo",
-  mas: "Más",
+  mas: "Cuenta y preferencias",
   ajustes: "Ajustes",
 }
-type Tab = "inicio" | "resumen" | "trabajo" | "mas"
+type Tab = "inicio" | "resumen" | "trabajo" | "movimientos" | "otro"
 const tabOf = (v: View): Tab =>
-  v === "inicio" ? "inicio" : v === "resumen" ? "resumen" : v === "trabajo" || v === "nominas" ? "trabajo" : "mas"
-const PARENT: Partial<Record<View, View>> = {
-  movimientos: "mas",
-  presupuesto: "mas",
-  metas: "mas",
-  hormiga: "mas",
-  ajustes: "mas",
-}
+  v === "inicio" ? "inicio" : v === "resumen" ? "resumen" : v === "trabajo" || v === "nominas" ? "trabajo" : v === "movimientos" ? "movimientos" : "otro"
+const PARENT: Partial<Record<View, View>> = {}
 
 type Sheet =
   | { kind: "tx"; tx: Tx | null; type?: TxType }
@@ -149,6 +144,7 @@ type Sheet =
   | { kind: "workcfg" }
   | { kind: "schedule" }
   | { kind: "weekplan"; week?: string }
+  | { kind: "day"; date: string }
   | null
 
 /* ---------- operaciones sobre un borrador ---------- */
@@ -205,6 +201,7 @@ export function FinanzasApp() {
   const [sheetKey, setSheetKey] = React.useState(0)
   const [last, setLast] = React.useState<{ type: TxType; cat: Partial<Record<TxType, string>> }>({ type: "g", cat: {} })
   const [tour, setTour] = React.useState(false)
+  const [menu, setMenu] = React.useState(false)
   const [buddyOn, setBuddyOn] = React.useState(true)
   const [onboard, setOnboard] = React.useState(false)
   const [obKey, setObKey] = React.useState(0)
@@ -319,6 +316,12 @@ export function FinanzasApp() {
     setOnboard(false)
     if (withTour) startTour()
     else setTimeout(() => orbiSay(a.nombre ? `¡Todo listo, ${a.nombre}! Tócame cuando quieras un consejo.` : "¡Todo listo! Tócame cuando quieras un consejo.", "wave"), 450)
+  }
+  /** Ir a una sección de «Cuenta y preferencias». */
+  const goSection = (s: MenuSection) => {
+    if (s === "instalar" && pwa.canInstall) return void pwa.install()
+    go("mas")
+    setTimeout(() => document.getElementById(`sec-${s}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 250)
   }
   const startTour = () => {
     setView("inicio")
@@ -660,7 +663,7 @@ export function FinanzasApp() {
       return
     }
     const s: Shift = plan
-      ? { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: plan.ini, fin: plan.fin, pausa: plan.pausa || 0 }
+      ? { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: plan.ini, fin: plan.fin, pausa: plan.pausa || 0, ...(plan.cubre ? { cubre: true } : {}) }
       : { id: "s" + uid(), d: todayStr(), kind: "trabajo", ini: cfg.ini, fin: cfg.fin, pausa: cfg.pausa }
     update((d) => {
       d.work.shifts.push(s)
@@ -709,6 +712,43 @@ export function FinanzasApp() {
     if (!orbiSay(sch ? "¡Horario guardado! Ahora ficho cada día con el turno que te toca." : "Horario quitado. Vuelvo a tu jornada normal.", "happy"))
       toast.success(sch ? "Horario guardado" : "Horario quitado")
   }
+  /** Ficha del día: libre / trabajo / cubro y nota. Pasado o hoy = fichado; futuro = previsto. */
+  const saveDay = (r: DayResult) => {
+    const past = r.date <= todayStr()
+    update((d) => {
+      d.hasSettings = true
+      const notes = { ...(d.work.notes || {}) }
+      if (r.note) notes[r.date] = r.note
+      else delete notes[r.date]
+      if (Object.keys(notes).length) d.work.notes = notes
+      else delete d.work.notes
+      if (past) {
+        const prev = d.work.shifts.filter((s) => s.d === r.date)
+        const keep = prev.find((s) => s.kind === "trabajo") || prev[0]
+        d.work.shifts = d.work.shifts.filter((s) => s.d !== r.date)
+        const base = { id: keep?.id || "s" + uid(), d: r.date, n: keep?.n }
+        if (r.plan) d.work.shifts.push({ ...base, kind: "trabajo", ini: r.plan.ini, fin: r.plan.fin, pausa: r.plan.pausa || 0, ...(r.plan.cubre ? { cubre: true } : {}) })
+        else d.work.shifts.push({ ...base, kind: "libre", ini: "", fin: "", pausa: 0 })
+      } else {
+        const monday = weekStart(r.date)
+        const plans = { ...(d.work.cfg.weekPlans || {}) }
+        const week = plans[monday]
+          ? plans[monday].map((x) => (x ? { ...x } : null))
+          : Array.from({ length: 7 }, (_, i) => {
+              const p = planFor(addDays(monday, i), d.work.cfg)
+              return p ? { ...p } : null
+            })
+        const [y, m, dd] = r.date.split("-").map(Number)
+        week[(new Date(y, m - 1, dd).getDay() + 6) % 7] = r.plan
+        plans[monday] = week
+        d.work.cfg.weekPlans = plans
+      }
+    })
+    close()
+    const msg =
+      r.estado === "libre" ? "Día libre apuntado. ¡A disfrutarlo! 🌿" : r.estado === "cubre" ? "Apuntado: ese día cubres a alguien. ¡Buen compañero!" : past ? "Jornada guardada 💪" : "Turno previsto guardado."
+    if (!orbiSay(msg, "happy")) toast.success(msg)
+  }
   const saveWeekPlan = (monday: string, week: (DayPlan | null)[] | null) => {
     update((d) => {
       d.hasSettings = true
@@ -733,7 +773,7 @@ export function FinanzasApp() {
       const d = `${month}-${pad(k)}`
       if (d > today || done.has(d)) continue
       const p = planFor(d, cfg)
-      if (p) add.push({ id: "s" + uid() + k, d, kind: "trabajo", ini: p.ini, fin: p.fin, pausa: p.pausa || 0 })
+      if (p) add.push({ id: "s" + uid() + k, d, kind: "trabajo", ini: p.ini, fin: p.fin, pausa: p.pausa || 0, ...(p.cubre ? { cubre: true } : {}) })
     }
     if (!add.length) return toast("No hay días pendientes de tu horario en este mes.")
     open({
@@ -856,6 +896,17 @@ export function FinanzasApp() {
       ) : null}
       {loaded ? <OrbiBuddy view={view} data={D} nombre={real.settings.nombre} hidden={!buddyOn || tour || onboard} /> : null}
       <SideNav view={view} onGo={(v) => go(v)} onAdd={() => loaded && open({ kind: "add" })} />
+      <SideMenu
+        open={menu}
+        onOpenChange={setMenu}
+        view={view}
+        name={real.settings.nombre}
+        email={cloud.user?.email ?? null}
+        cloud={cloud.user ? cloud.status : null}
+        canInstall={!pwa.installed}
+        onGo={(v) => go(v)}
+        onSection={goSection}
+      />
       <div className="lg:pl-[260px]">
       <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
         <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
@@ -875,9 +926,23 @@ export function FinanzasApp() {
                 <h1 className="truncate font-heading text-xl font-semibold tracking-tight lg:text-2xl">{TITLES[view]}</h1>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <StatusPill mode={mode} demo={showingDemo} cloud={cloud.user ? cloud.status : null} onCloud={() => go("mas")} />
-              <ThemeToggle />
+            <div className="flex items-center gap-1">
+              {memory ? <span className="rounded-full bg-bad/12 px-2 py-1 text-[11px] font-semibold text-bad">Sin guardar</span> : null}
+              {cloud.enabled ? (
+                <button type="button" onClick={() => goSection("cuenta")} className="grid size-10 place-items-center rounded-full hover:bg-muted">
+                  <CloudBadge status={cloud.user ? cloud.status : null} />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                data-tour="nav-mas"
+                aria-label="Abrir menú"
+                aria-expanded={menu}
+                onClick={() => setMenu(true)}
+                className="grid size-10 place-items-center rounded-full hover:bg-muted"
+              >
+                <MenuIcon className="size-6" />
+              </button>
             </div>
           </div>
         </header>
@@ -939,7 +1004,7 @@ export function FinanzasApp() {
                   month={month}
                   tab={view === "nominas" ? "nominas" : "jornadas"}
                   onTab={(t) => go(t === "nominas" ? "nominas" : "trabajo")}
-                  onDay={openDay}
+                  onDay={(date) => open({ kind: "day", date })}
                   onClock={clockToday}
                   onCfg={() => open({ kind: "workcfg" })}
                   onSchedule={() => open({ kind: "schedule" })}
@@ -1038,6 +1103,22 @@ export function FinanzasApp() {
             onDelete={deletePayslip}
           />
         ) : null}
+        {sheet?.kind === "day" ? (
+          <DayDialog
+            key={sheetKey}
+            open
+            date={sheet.date}
+            cfg={real.work.cfg}
+            allShifts={real.work.shifts}
+            note={real.work.notes?.[sheet.date] || ""}
+            onClose={close}
+            onSave={saveDay}
+            onMore={() => {
+              const s = real.work.shifts.find((x) => x.d === sheet.date) || null
+              openDay(sheet.date, s)
+            }}
+          />
+        ) : null}
         {sheet?.kind === "weekplan" ? (
           <WeekPlanDialog key={sheetKey} open cfg={real.work.cfg} shifts={real.work.shifts} initialWeek={sheet.week} onClose={close} onSave={saveWeekPlan} />
         ) : null}
@@ -1067,7 +1148,7 @@ export function FinanzasApp() {
 
 /* ---------- piezas del armazón ---------- */
 function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; onAdd: () => void }) {
-  const item = (v: Tab, label: string, Icon: React.ComponentType<{ className?: string }>) => (
+  const item = (v: Exclude<Tab, "otro">, label: string, Icon: React.ComponentType<{ className?: string }>) => (
     <button
       type="button"
       data-tour={`nav-${v}`}
@@ -1103,7 +1184,7 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
         </button>
       </div>
       {item("trabajo", "Trabajo", ClockIcon)}
-      {item("mas", "Más", EllipsisIcon)}
+      {item("movimientos", "Movimientos", ListIcon)}
     </nav>
   )
 }
@@ -1153,7 +1234,7 @@ function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; o
       </Button>
       <nav className="grid gap-1">{SIDE.map((x) => link(x.v, x.label, x.Icon, x.tour))}</nav>
       <div className="mt-auto grid gap-1 border-t pt-4">
-        {link("mas", "Orbi e instalar", SparklesIcon, "nav-mas")}
+        {link("mas", "Cuenta y preferencias", SparklesIcon)}
         {link("ajustes", "Ajustes y copias", SlidersHorizontalIcon)}
       </div>
     </aside>
@@ -1194,54 +1275,6 @@ function AddSheet({ onClose, onPick }: { onClose: () => void; onPick: (k: "g" | 
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function StatusPill({
-  mode,
-  demo,
-  cloud,
-  onCloud,
-}: {
-  mode: string
-  demo: boolean
-  cloud: CloudStatus | null
-  onCloud: () => void
-}) {
-  if (cloud) {
-    const [dot, txt] =
-      cloud === "synced"
-        ? ["bg-good", "En la nube"]
-        : cloud === "syncing" || cloud === "pending"
-          ? ["spin", "Sincronizando"]
-          : cloud === "offline"
-            ? ["bg-muted-foreground", "Sin conexión"]
-            : ["bg-bad", "Revisar nube"]
-    return (
-      <button
-        type="button"
-        onClick={onCloud}
-        title={STATUS_TEXT[cloud]}
-        className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8"
-      >
-        {dot === "spin" ? <Spinner className="size-3 text-primary" label="Sincronizando" /> : <i className={cn("size-1.5 rounded-full", dot)} />}
-        {txt}
-      </button>
-    )
-  }
-  const [dot, txt] =
-    mode === "loading"
-      ? ["spin", "Cargando…"]
-      : demo
-        ? ["bg-gold", "Ejemplo"]
-        : mode === "local"
-          ? ["bg-good", "Guardado"]
-          : ["bg-bad", "Sin guardar"]
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-muted-foreground ring-1 ring-foreground/8">
-      {dot === "spin" ? <Spinner className="size-3" /> : <i className={cn("size-1.5 rounded-full", dot)} />}
-      {txt}
-    </span>
   )
 }
 

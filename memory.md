@@ -83,6 +83,10 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 
 ## Decisiones y preferencias del usuario
 
+- **Principio rector (2026-11-23)**: gestionar dinero y horarios de forma sencilla y rápida; poco texto, pocos pasos, todo a toques. Antes de añadir una función, pensar cómo hacerla en un toque.
+- Calendario: verde = libre, rojo = trabajo, amarillo = cubro a alguien; notas por día.
+- Navegación: menú lateral con tres rayas arriba a la derecha; estado de la nube como icono (verde ✓ / rojo !).
+
 - Idioma: español de España, tono cercano; el usuario prefiere que se tome la iniciativa («lánzate», «tú sabes más»).
 - Cuenta **opcional** y app **local primero**: sin registro obligatorio; con cuenta, sincroniza. Pensada para que la use más gente.
 - Moneda: euros. Nómina variable por IRPF; horas extra importantes.
@@ -100,7 +104,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 ## Estado actual / siguiente paso
 
 - **Pendiente del usuario**:
-  - Ejecutar `20261125000000_push_reminders.sql` y después `supabase/private/push_setup.sql` para activar los recordatorios.
+  - Ejecutar `20261126000000_work_week_plans.sql` (semanas planificadas, «cubro a alguien» y notas del calendario).
   - Pegar en Supabase las plantillas nuevas de `supabase/templates/` (Magic Link y Confirm signup, con sus asuntos).
   - Probar la sincronización por filas con su cuenta real en dos dispositivos (no se pudo probar desde aquí: el código llega a su correo).
 - Valorar dominio propio para el remitente de correo.

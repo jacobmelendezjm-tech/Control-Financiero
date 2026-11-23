@@ -100,6 +100,15 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - **Notificaciones push** con la app cerrada: fichar al acabar el turno, día de cobro, fijos, resumen diario (a la hora elegida y solo si no has apuntado nada) y semanal, y «Orbi te echa de menos» tras 3 días sin entrar. Tarjeta «Recordatorios» en Más con prueba y próximos avisos. Funciona sin cuenta; los avisos no llevan importes.
 - Servidor: `app/api/push/cron` + `pg_cron` en Supabase; los secretos en `orbe_private.config` (archivo privado fuera de git). 11 comprobaciones nuevas en PGlite.
 
+### Horarios sencillos, calendario de colores y menú
+
+- **Tu semana** arriba en Trabajo: toca un día y elige Libre 🟢, Trabajo 🔴 o Cubro a alguien 🟡 con tus turnos habituales en botones, y añade una nota. Lo pasado queda fichado y lo futuro previsto.
+- **Planificar la semana entera** a toques («Igual que la semana anterior»), para horarios que cambian cada semana sin patrón. El horario rotativo queda como opción secundaria.
+- **Calendario de colores** (intenso = fichado, suave = previsto) con marca de nota.
+- **Menú lateral** (tres rayas arriba a la derecha) con Tu dinero, Trabajo y App; la barra inferior lleva Movimientos en lugar de «Más».
+- **Icono de nube**: verde con ✓ si está guardado en la nube, rojo con ! si no.
+- Base de datos: `20261126000000_work_week_plans.sql` (semanas planificadas, «cubre» y notas), con sincronización de borrados de horarios.
+
 ---
 
 ## Plantilla para nuevas entradas

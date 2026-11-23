@@ -168,15 +168,17 @@ export function useCloud(store: FinanceStore) {
         const removed: Row[] = []
         for (const [k, r] of Object.entries(target[t])) if (!sameRow(r, base[t][k])) changed.push(r)
         for (const [k, r] of Object.entries(base[t])) if (!(k in target[t])) removed.push(r)
-        if (t === "work_schedule_days" || t === "work_week_plans") {
-          // Los horarios se rehacen: borrar días quitados y escribir los nuevos.
-          const k1 = t === "work_schedule_days" ? "semana" : "lunes"
+        if (t === "work_schedule_days" || t === "work_week_plans" || t === "work_day_notes") {
+          // Horarios y notas se borran de verdad: quitar lo eliminado y escribir lo nuevo.
+          const keys = t === "work_schedule_days" ? ["semana", "dia"] : t === "work_week_plans" ? ["lunes", "dia"] : ["fecha"]
           for (const r of removed) {
-            const { error } = await sb.from(t).delete().eq("user_id", uid).eq(k1, r[k1] as string).eq("dia", r.dia as number)
+            let q = sb.from(t).delete().eq("user_id", uid)
+            for (const k of keys) q = q.eq(k, r[k] as string)
+            const { error } = await q
             if (error) return error as Err
           }
           if (changed.length) {
-            const { error } = await sb.from(t).upsert(changed.map((r) => ({ ...r, user_id: uid })), { onConflict: `user_id,${k1},dia` })
+            const { error } = await sb.from(t).upsert(changed.map((r) => ({ ...r, user_id: uid })), { onConflict: ["user_id", ...keys].join(",") })
             if (error) return error as Err
           }
           continue
@@ -234,7 +236,7 @@ export function useCloud(store: FinanceStore) {
           else delete base[t][k]
         }
       // Horarios: se borran filas de verdad, así que se comparan completos para ver los borrados.
-      for (const t of ["work_schedule_days", "work_week_plans"] as const) {
+      for (const t of ["work_schedule_days", "work_week_plans", "work_day_notes"] as const) {
         const { data: all, error: e2 } = await sb.from(t).select("*").eq("user_id", u.id)
         if (e2) return fail(e2 as Err)
         const live = new Set((all || []).map((raw) => keyOf(t, canonical(t, raw))))

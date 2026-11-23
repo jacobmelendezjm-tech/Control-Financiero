@@ -82,6 +82,8 @@ export interface Shift {
   /** Minutos extra a mano; si falta se calculan sobre la jornada diaria. */
   ex?: number | null
   n?: string
+  /** Turno cubriendo a otra persona. */
+  cubre?: boolean
 }
 export interface WorkCfg {
   horasDia: number
@@ -104,6 +106,8 @@ export interface DayPlan {
   ini: string
   fin: string
   pausa: number
+  /** Turno cubriendo a otra persona. */
+  cubre?: boolean
 }
 export interface Schedule {
   on: boolean
@@ -115,6 +119,8 @@ export interface Schedule {
 export interface WorkData {
   cfg: WorkCfg
   shifts: Shift[]
+  /** Notas del calendario por día (AAAA-MM-DD → texto). */
+  notes?: Record<string, string>
 }
 export interface Payslip {
   id: string
@@ -302,7 +308,10 @@ export function normalizeWork(w: unknown): WorkData {
   const shifts = Array.isArray(o.shifts)
     ? o.shifts.filter((x) => x && /^\d{4}-\d{2}-\d{2}$/.test(x.d) && SHIFT_KINDS.includes(x.kind))
     : []
-  return { cfg, shifts: clone(shifts) }
+  const notes: Record<string, string> = {}
+  for (const [k, v] of Object.entries(o.notes || {}))
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === "string" && v.trim()) notes[k] = v.slice(0, 200)
+  return { cfg, shifts: clone(shifts), ...(Object.keys(notes).length ? { notes } : {}) }
 }
 export function normalizeSettings(s: unknown): Settings {
   const d = defaultSettings()

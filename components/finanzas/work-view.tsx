@@ -31,6 +31,26 @@ import { shiftLabel } from "@/components/finanzas/schedule-dialog"
 import { addDays, type DayTotal } from "@/lib/work"
 import type { WorkCfg } from "@/lib/finance"
 
+type ToneKind = "libre" | "trabajo" | "cubre" | "baja" | "none"
+const TONE_CLASS: Record<ToneKind, { solid: string; soft: string }> = {
+  libre: { solid: "bg-good text-white", soft: "bg-good/15 text-foreground ring-1 ring-good/35" },
+  trabajo: { solid: "bg-bad text-white", soft: "bg-bad/12 text-foreground ring-1 ring-bad/35" },
+  cubre: { solid: "bg-gold text-[#1f2b2d]", soft: "bg-gold/25 text-foreground ring-1 ring-gold/60" },
+  baja: { solid: "bg-muted-foreground/35 text-foreground", soft: "bg-muted text-muted-foreground" },
+  none: { solid: "bg-muted/60 text-muted-foreground", soft: "bg-muted/60 text-muted-foreground" },
+}
+/** Color de un día: lo fichado (intenso) o lo previsto por el horario (suave). */
+function dayTone(d: string, t: DayTotal | undefined, cfg: WorkCfg): { kind: ToneKind; solid: boolean } {
+  if (t) {
+    if (t.min > 0) return { kind: t.cubre ? "cubre" : "trabajo", solid: true }
+    return { kind: t.kinds.includes("baja") ? "baja" : "libre", solid: true }
+  }
+  const p = planFor(d, cfg)
+  if (p) return { kind: p.cubre ? "cubre" : "trabajo", solid: false }
+  if (p === null) return { kind: "libre", solid: false }
+  return { kind: "none", solid: false }
+}
+
 /** Tu semana de un vistazo: toca para poner el horario. */
 function WeekStrip({
   cfg,
@@ -38,12 +58,14 @@ function WeekStrip({
   today,
   onEdit,
   onRotate,
+  onDay,
 }: {
   cfg: WorkCfg
   map: Record<string, DayTotal>
   today: string
   onEdit: (monday?: string) => void
   onRotate: () => void
+  onDay: (d: string) => void
 }) {
   const [off, setOff] = React.useState(0)
   const monday = addDays(weekStart(today), 7 * off)
@@ -64,16 +86,17 @@ function WeekStrip({
           const t = map[d]
           const p = planFor(d, cfg)
           const done = !!t?.min
+          const tone = dayTone(d, t, cfg)
           return (
             <button
               key={d}
               type="button"
-              onClick={() => onEdit(monday)}
+              onClick={() => onDay(d)}
               aria-label={`${WEEKDAYS[i]} ${+d.slice(8)}: ${done ? "fichado" : p ? shiftLabel(p) : "libre"}`}
               className={cn(
                 "grid min-h-16 content-start justify-items-center gap-0.5 rounded-xl px-0.5 py-1.5 transition-colors active:scale-95",
-                done ? "bg-primary/85 text-primary-foreground" : p ? "bg-primary/12" : "bg-muted/60 text-muted-foreground",
-                d === today && "ring-2 ring-primary"
+                TONE_CLASS[tone.kind][tone.solid ? "solid" : "soft"],
+                d === today && "outline-2 outline-offset-1 outline-foreground"
               )}
             >
               <span className="text-[11px] font-semibold">{WEEKDAYS[i]}</span>
@@ -85,7 +108,7 @@ function WeekStrip({
       </div>
       <div className="flex items-center justify-between px-4 text-xs">
         <button type="button" className="font-medium text-primary" onClick={() => onEdit(monday)}>
-          Poner horario
+          Poner la semana entera
         </button>
         <button type="button" className="text-muted-foreground underline-offset-2 hover:underline" onClick={onRotate}>
           ¿Se repite? Horario rotativo
@@ -183,7 +206,6 @@ function Jornadas({
   const weeks = monthWeeks(map, month, cfg)
   const cells = calendarGrid(month)
   const today = todayStr()
-  const maxMin = Math.max(Math.round(cfg.horasDia * 60), ...Object.values(map).map((t) => t.min))
   const clockedToday = !!map[today]
   const hasSchedule = scheduleOn(cfg)
   const hasAny = hasAnySchedule(cfg)
@@ -232,7 +254,7 @@ function Jornadas({
           </div>
         </section>
 
-        <WeekStrip cfg={cfg} map={map} today={today} onEdit={onWeekPlan} onRotate={onSchedule} />
+        <WeekStrip cfg={cfg} map={map} today={today} onEdit={onWeekPlan} onRotate={onSchedule} onDay={(d) => onDay(d, null)} />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Media por día" value={sum.days ? fmtH(sum.avg) : "—"} />
@@ -253,12 +275,15 @@ function Jornadas({
           <CardContent className="grid gap-3">
             <div className="flex items-center justify-between">
               <Eyebrow>Calendario</Eyebrow>
-              <span className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <i className="size-2 rounded-full bg-gold" aria-hidden /> extra
+                  <i className="size-2.5 rounded-full bg-good" aria-hidden /> Libre
                 </span>
                 <span className="flex items-center gap-1">
-                  <i className="size-2 rounded-full bg-glow" aria-hidden /> libre/vac.
+                  <i className="size-2.5 rounded-full bg-bad" aria-hidden /> Trabajo
+                </span>
+                <span className="flex items-center gap-1">
+                  <i className="size-2.5 rounded-full bg-gold" aria-hidden /> Cubro
                 </span>
               </span>
             </div>
@@ -271,16 +296,21 @@ function Jornadas({
               {cells.map((d, i) => {
                 if (!d) return <span key={i} />
                 const t = map[d]
+                const tone = dayTone(d, t, cfg)
                 const plan = !t ? planFor(d, cfg) || null : null
-                const intensity = t?.min ? 0.18 + 0.62 * Math.min(1, t.min / maxMin) : 0
-                const off = t && !t.min && t.kinds.some((k) => k !== "trabajo")
-                const label = t
-                  ? t.min
-                    ? `${+d.slice(8)}: ${fmtMin(t.min)}${t.extra ? `, ${fmtMin(t.extra)} extra` : ""}`
-                    : `${+d.slice(8)}: ${t.kinds.map((k) => KIND_LABEL[k]).join(", ")}`
-                  : plan
-                    ? `${+d.slice(8)}: turno previsto de ${plan.ini} a ${plan.fin}`
-                    : `${+d.slice(8)}: sin registrar`
+                const note = data.work.notes?.[d]
+                const label =
+                  `${+d.slice(8)}: ` +
+                  (t
+                    ? t.min
+                      ? `${t.cubre ? "cubriendo, " : ""}${fmtMin(t.min)}${t.extra ? `, ${fmtMin(t.extra)} extra` : ""}`
+                      : t.kinds.map((k) => KIND_LABEL[k]).join(", ")
+                    : plan
+                      ? `${plan.cubre ? "cubres, " : "turno previsto, "}de ${plan.ini} a ${plan.fin}`
+                      : tone.kind === "libre"
+                        ? "libre"
+                        : "sin registrar") +
+                  (note ? `. Nota: ${note}` : "")
                 return (
                   <button
                     key={d}
@@ -289,32 +319,23 @@ function Jornadas({
                     onClick={() => onDay(d, t?.shifts[0] || null)}
                     className={cn(
                       "relative grid aspect-square min-h-11 content-center justify-items-center rounded-xl text-sm transition-transform active:scale-95 sm:aspect-auto sm:h-14",
-                      !t && "bg-muted/60 text-muted-foreground",
-                      plan && "bg-transparent text-foreground ring-1 ring-primary/50 ring-dashed outline-dashed outline-1 -outline-offset-4 outline-primary/40",
-                      off && "bg-glow/15 text-foreground ring-1 ring-glow/40",
-                      d === today && "ring-2 ring-primary"
+                      TONE_CLASS[tone.kind][tone.solid ? "solid" : "soft"],
+                      d === today && "outline-2 outline-offset-1 outline-foreground"
                     )}
-                    style={t?.min ? { background: `color-mix(in oklab, var(--primary) ${Math.round(intensity * 100)}%, var(--card))` } : undefined}
                   >
-                    <span className={cn("font-semibold leading-none", intensity > 0.55 && "text-white")}>{+d.slice(8)}</span>
-                    <span
-                      className={cn(
-                        "mt-0.5 font-mono text-[9px] leading-none text-muted-foreground",
-                        intensity > 0.55 && "text-white/85",
-                        intensity > 0 && intensity <= 0.55 && "text-foreground/70"
-                      )}
-                    >
+                    <span className="font-semibold leading-none">{+d.slice(8)}</span>
+                    <span className="mt-0.5 text-[9px] leading-none opacity-80 tabular-nums">
                       {t ? (t.min ? fmtH(t.min).replace(" h", "h") : KIND_LABEL[t.kinds[0]].slice(0, 3)) : plan ? fmtH(planMinutes(plan)).replace(" h", "h") : ""}
                     </span>
-                    {t?.extra ? <i aria-hidden className="absolute top-1 right-1 size-1.5 rounded-full bg-gold" /> : null}
+                    {note ? <i aria-hidden className="absolute top-1 left-1 size-1.5 rounded-full bg-current opacity-70" /> : null}
+                    {t?.extra ? <span aria-hidden className="absolute top-0 right-1 text-[10px] font-bold leading-none">+</span> : null}
                   </button>
                 )
               })}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                Toca un día para registrar o editar la jornada.
-                {hasAny ? " Los días con borde discontinuo son turnos previstos." : ""}
+                Toca un día para cambiarlo o añadir una nota. Color intenso: ya fichado.
               </p>
               {hasAny ? (
                 <Button size="sm" variant="outline" className="rounded-full" onClick={onFill}>

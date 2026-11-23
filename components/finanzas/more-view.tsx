@@ -2,23 +2,11 @@
 
 import * as React from "react"
 import {
-  BugIcon,
-  ChartPieIcon,
-  ChevronRightIcon,
   DownloadIcon,
-  FileTextIcon,
-  ListIcon,
-  MoonIcon,
-  PiggyBankIcon,
   ShareIcon,
-  SlidersHorizontalIcon,
   SquarePlusIcon,
-  SunIcon,
-  TargetIcon,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 
-import { useThemeSwitch } from "@/lib/theme-transition"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -35,19 +23,10 @@ import { Eyebrow } from "@/components/finanzas/kit"
 
 export type MoreGo = "movimientos" | "resumen" | "presupuesto" | "metas" | "hormiga" | "nominas" | "ajustes"
 
-const TILES: { v: MoreGo; label: string; sub: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { v: "movimientos", label: "Movimientos", sub: "Busca y filtra todo", Icon: ListIcon },
-  { v: "resumen", label: "Análisis", sub: "50/30/20 y 6 meses", Icon: ChartPieIcon },
-  { v: "presupuesto", label: "Presupuestos", sub: "Límites por categoría", Icon: TargetIcon },
-  { v: "metas", label: "Ahorro y metas", sub: "Huchas con objetivo", Icon: PiggyBankIcon },
-  { v: "hormiga", label: "Gastos hormiga", sub: "Los pequeños que suman", Icon: BugIcon },
-  { v: "nominas", label: "Nóminas", sub: "Neto, bruto e IRPF", Icon: FileTextIcon },
-]
 
 export function MoreView({
   nombre,
   pwa,
-  onGo,
   onNombre,
   buddyOn,
   onBuddy,
@@ -58,7 +37,7 @@ export function MoreView({
 }: {
   nombre: string
   pwa: { canInstall: boolean; installed: boolean; ios: boolean; install: () => Promise<boolean> }
-  onGo: (v: MoreGo) => void
+  onGo?: (v: MoreGo) => void
   onNombre: (n: string) => void
   buddyOn: boolean
   onBuddy: (on: boolean) => void
@@ -67,38 +46,21 @@ export function MoreView({
   cloud: Cloud
   reminders: Reminders
 }) {
-  const { resolvedTheme } = useTheme()
-  const switchTheme = useThemeSwitch()
   const [name, setName] = React.useState(nombre)
 
   return (
     <div className="view-in grid gap-4 lg:grid-cols-2 lg:items-start">
       <div className="grid min-w-0 gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          {TILES.map(({ v, label, sub, Icon }) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => onGo(v)}
-              className="grid gap-3 rounded-3xl bg-card p-4 text-left ring-1 ring-foreground/8 transition-transform active:scale-[0.98]"
-            >
-              <span className="grid size-11 place-items-center rounded-2xl bg-secondary text-primary">
-                <Icon className="size-5" />
-              </span>
-              <span>
-                <span className="block font-semibold">{label}</span>
-                <span className="block text-xs text-muted-foreground">{sub}</span>
-              </span>
-            </button>
-          ))}
+        <div id="sec-cuenta" className="scroll-mt-24">
+          <AccountCard cloud={cloud} />
+        </div>
+        <div id="sec-recordatorios" className="scroll-mt-24">
+          <RemindersCard r={reminders} />
         </div>
       </div>
 
       <div className="grid min-w-0 gap-4">
-        <AccountCard cloud={cloud} />
-        <RemindersCard r={reminders} />
-
-        <section className="relative overflow-hidden rounded-[28px] bg-card p-5 ring-1 ring-foreground/8">
+        <section id="sec-orbi" className="relative scroll-mt-24 overflow-hidden rounded-[28px] bg-card p-5 ring-1 ring-foreground/8">
           <div aria-hidden className="absolute -right-6 -bottom-8 size-40 rounded-full bg-glow/15 blur-2xl" />
           <div className="relative flex items-center gap-4">
             <Orbi mood="wave" className="w-20 shrink-0" />
@@ -124,7 +86,7 @@ export function MoreView({
         </section>
 
         {!pwa.installed ? (
-          <section className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground">
+          <section id="sec-instalar" className="bg-hero-gradient relative scroll-mt-24 overflow-hidden rounded-[28px] p-5 text-hero-foreground">
             <div className="flex items-center gap-3">
               <OrbeMark className="size-14 rounded-2xl" />
               <div>
@@ -180,30 +142,6 @@ export function MoreView({
           </CardContent>
         </Card>
 
-        <Card className="py-1">
-          <button
-            type="button"
-            onClick={(e) => switchTheme(e.currentTarget)}
-            className="flex items-center gap-3 px-4 py-3 text-left"
-          >
-            <span className="grid size-10 place-items-center rounded-xl bg-secondary">
-              <SunIcon className="hidden size-5 dark:block" />
-              <MoonIcon className="size-5 dark:hidden" />
-            </span>
-            <span className="flex-1 font-medium">Modo {resolvedTheme === "dark" ? "claro" : "oscuro"}</span>
-            <ChevronRightIcon className="size-4 text-muted-foreground" />
-          </button>
-          <button type="button" onClick={() => onGo("ajustes")} className="flex items-center gap-3 border-t px-4 py-3 text-left">
-            <span className="grid size-10 place-items-center rounded-xl bg-secondary">
-              <SlidersHorizontalIcon className="size-5" />
-            </span>
-            <span className="flex-1">
-              <span className="block font-medium">Ajustes y copias</span>
-              <span className="block text-xs text-muted-foreground">Categorías, fijos, saldo inicial, exportar e importar</span>
-            </span>
-            <ChevronRightIcon className="size-4 text-muted-foreground" />
-          </button>
-        </Card>
         <p className="px-1 text-center text-xs text-muted-foreground">
           {cloud.user
             ? "Tus datos se guardan en este dispositivo y en la nube."

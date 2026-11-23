@@ -39,12 +39,15 @@ export interface DayTotal {
   extra: number
   kinds: ShiftKind[]
   shifts: Shift[]
+  /** Algún turno de ese día fue cubriendo a otra persona. */
+  cubre: boolean
 }
 
 export function dayTotals(shifts: Shift[], cfg: WorkCfg) {
   const map: Record<string, DayTotal> = {}
   for (const s of shifts) {
-    const t = (map[s.d] ||= { d: s.d, min: 0, extra: 0, kinds: [], shifts: [] })
+    const t = (map[s.d] ||= { d: s.d, min: 0, extra: 0, kinds: [], shifts: [], cubre: false })
+    if (s.cubre) t.cubre = true
     t.min += shiftMinutes(s)
     t.shifts.push(s)
     if (!t.kinds.includes(s.kind)) t.kinds.push(s.kind)

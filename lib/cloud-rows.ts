@@ -23,6 +23,7 @@ export type Table =
   | "work_schedules"
   | "work_schedule_days"
   | "work_week_plans"
+  | "work_day_notes"
   | "transactions"
   | "shifts"
   | "payslips"
@@ -39,6 +40,7 @@ export const TABLES: Table[] = [
   "work_schedules",
   "work_schedule_days",
   "work_week_plans",
+  "work_day_notes",
   "transactions",
   "shifts",
   "payslips",
@@ -56,10 +58,11 @@ const COLS: Record<Table, string[]> = {
   goals: ["id", "nombre", "objetivo", "ahorrado", "fecha_limite"],
   goal_contributions: ["id", "goal_id", "fecha", "importe"],
   work_schedules: ["activo", "ancla", "semanas"],
-  work_schedule_days: ["semana", "dia", "hora_entrada", "hora_salida", "pausa_min"],
-  work_week_plans: ["lunes", "dia", "hora_entrada", "hora_salida", "pausa_min"],
+  work_schedule_days: ["semana", "dia", "hora_entrada", "hora_salida", "pausa_min", "cubre"],
+  work_week_plans: ["lunes", "dia", "hora_entrada", "hora_salida", "pausa_min", "cubre"],
+  work_day_notes: ["fecha", "nota"],
   transactions: ["id", "fecha", "tipo", "importe", "category_id", "nota", "recurring_id", "payslip_id", "hormiga", "orden"],
-  shifts: ["id", "fecha", "tipo", "hora_entrada", "hora_salida", "pausa_min", "extra_min", "nota"],
+  shifts: ["id", "fecha", "tipo", "hora_entrada", "hora_salida", "pausa_min", "extra_min", "nota", "cubre"],
   payslips: ["id", "mes", "fecha_cobro", "bruto", "irpf", "seg_social", "otros", "neto", "extras", "horas_extra_min", "transaction_id", "nota"],
 }
 const NUM = new Set([
@@ -76,7 +79,9 @@ export const keyOf = (t: Table, r: Row) =>
       ? `${r.semana}-${r.dia}`
       : t === "work_week_plans"
         ? `${r.lunes}-${r.dia}`
-        : String(r.id)
+        : t === "work_day_notes"
+          ? String(r.fecha)
+          : String(r.id)
 
 /** Fila tal y como llega de la base de datos → forma canónica (mismas columnas y tipos que toRows). */
 export function canonical(t: Table, raw: Record<string, unknown>): Row {
@@ -149,10 +154,13 @@ export function toRows(d: FinanceData): RowSet {
             hora_entrada: p2.ini,
             hora_salida: p2.fin,
             pausa_min: p2.pausa || 0,
+            cubre: !!p2.cubre,
           })
       })
     )
   }
+  for (const [fecha, nota] of Object.entries(d.work.notes || {}))
+    rs.work_day_notes[fecha] = canonical("work_day_notes", { fecha, nota })
   for (const [lunes, wk] of Object.entries(w.weekPlans || {}))
     wk.forEach((p2, j) => {
       rs.work_week_plans[`${lunes}-${j}`] = canonical("work_week_plans", {
@@ -161,6 +169,7 @@ export function toRows(d: FinanceData): RowSet {
         hora_entrada: p2 ? p2.ini : null,
         hora_salida: p2 ? p2.fin : null,
         pausa_min: p2 ? p2.pausa || 0 : 0,
+        cubre: !!p2?.cubre,
       })
     })
   for (const t of Object.values(d.months).flat())
@@ -186,6 +195,7 @@ export function toRows(d: FinanceData): RowSet {
       pausa_min: x.pausa || 0,
       extra_min: x.ex ?? null,
       nota: x.n || "",
+      cubre: !!x.cubre,
     })
   for (const p3 of d.payslips)
     rs.payslips[p3.id] = canonical("payslips", {
@@ -230,7 +240,8 @@ export function fromRows(rs: RowSet): FinanceData {
     for (const d of Object.values(rs.work_schedule_days)) {
       const i = Number(d.semana),
         j = Number(d.dia)
-      if (i < n && j < 7) weeks[i][j] = { ini: String(d.hora_entrada), fin: String(d.hora_salida), pausa: Number(d.pausa_min) || 0 }
+      if (i < n && j < 7)
+        weeks[i][j] = { ini: String(d.hora_entrada), fin: String(d.hora_salida), pausa: Number(d.pausa_min) || 0, ...(d.cubre ? { cubre: true } : {}) }
     }
     schedule = { on: !!sch.activo, anchor: String(sch.ancla), weeks }
   }
@@ -240,7 +251,7 @@ export function fromRows(rs: RowSet): FinanceData {
     const wk = (weekPlans[k] ||= Array(7).fill(null))
     const j = Number(d.dia)
     if (j >= 0 && j < 7 && d.hora_entrada && d.hora_salida)
-      wk[j] = { ini: String(d.hora_entrada), fin: String(d.hora_salida), pausa: Number(d.pausa_min) || 0 }
+      wk[j] = { ini: String(d.hora_entrada), fin: String(d.hora_salida), pausa: Number(d.pausa_min) || 0, ...(d.cubre ? { cubre: true } : {}) }
   }
 
   return loadAll({
@@ -291,6 +302,9 @@ export function fromRows(rs: RowSet): FinanceData {
         ...(schedule ? { schedule } : {}),
         ...(Object.keys(weekPlans).length ? { weekPlans } : {}),
       },
+      ...(Object.keys(rs.work_day_notes).length
+        ? { notes: Object.fromEntries(Object.values(rs.work_day_notes).map((n) => [String(n.fecha), String(n.nota)])) }
+        : {}),
       shifts: Object.values(rs.shifts).map((x) => {
         const s: Shift = {
           id: String(x.id),
@@ -302,6 +316,7 @@ export function fromRows(rs: RowSet): FinanceData {
         }
         if (x.extra_min != null) s.ex = Number(x.extra_min)
         if (x.nota) s.n = String(x.nota)
+        if (x.cubre) s.cubre = true
         return s
       }),
     },
