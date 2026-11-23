@@ -191,6 +191,10 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Corregido: recordatorios que aceptaban cualquier URL y textos/enlaces sin límite y se podían pisar conociendo el endpoint (migración `20261201000000_push_hardening.sql`, ejecutada y comprobada en producción, probada antes en PGlite con 20 casos), CSP y anti-clickjacking, notificaciones que podían abrir otra web, fórmulas en el CSV y `shadcn` en dependencias de producción.
 - Al cerrar sesión se suelta la suscripción de avisos de ese navegador para que siga funcionando sin cuenta.
 
+### Escritorio con una sola barra lateral
+
+- En escritorio desaparece el botón ☰ (era un segundo menú lateral redundante). La barra lateral fija gana **Modo oscuro/claro** y **Ayuda**; cuenta, moneda, recordatorios y Orbi están en «Cuenta y preferencias». En móvil y tablet el ☰ sigue igual.
+
 ---
 
 ## Plantilla para nuevas entradas

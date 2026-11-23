@@ -12,13 +12,17 @@ import {
   MenuIcon,
   FileTextIcon,
   HouseIcon,
+  LifeBuoyIcon,
   ListIcon,
+  MoonIcon,
   PiggyBankIcon,
   PlusIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
+  SunIcon,
   TargetIcon,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { toast } from "@/lib/notify"
 import { clearPendingLogin, readPendingLogin } from "@/lib/pending-login"
 
@@ -65,6 +69,7 @@ import { useReminders } from "@/hooks/use-reminders"
 import { ConflictDialog } from "@/components/finanzas/account-card"
 import { orbiSay, pick } from "@/lib/orbi"
 import { scrollToY, setScrollLocked } from "@/lib/scroll"
+import { useThemeSwitch } from "@/lib/theme-transition"
 import { usePwa } from "@/hooks/use-pwa"
 import {
   CUR,
@@ -995,7 +1000,7 @@ export function FinanzasApp() {
                 aria-label="Abrir menú"
                 aria-expanded={menu}
                 onClick={() => setMenu(true)}
-                className="grid size-10 place-items-center rounded-full hover:bg-muted"
+                className="grid size-10 place-items-center rounded-full hover:bg-muted lg:hidden"
               >
                 <MenuIcon className="size-6" />
               </button>
@@ -1275,6 +1280,15 @@ const SIDE: { v: View; label: string; Icon: React.ComponentType<{ className?: st
 
 /** Navegación lateral de escritorio (desde 1024 px). */
 function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; onAdd: () => void }) {
+  const { resolvedTheme } = useTheme()
+  const switchTheme = useThemeSwitch()
+  // El tema solo se conoce en el navegador: hasta entonces, «Modo oscuro» (igual en servidor y cliente).
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+  const dark = mounted && resolvedTheme === "dark"
   const link = (v: View, label: string, Icon: React.ComponentType<{ className?: string }>, tour?: string) => (
     <button
       key={v}
@@ -1294,7 +1308,7 @@ function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; o
   return (
     <aside
       aria-label="Secciones"
-      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/80 px-4 pt-6 pb-5 lg:flex"
+      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 overflow-y-auto border-r bg-card/80 px-4 pt-6 pb-5 lg:flex"
     >
       <div className="px-2">
         <OrbeWordmark />
@@ -1307,8 +1321,23 @@ function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; o
       </Button>
       <nav className="grid gap-1">{SIDE.map((x) => link(x.v, x.label, x.Icon, x.tour))}</nav>
       <div className="mt-auto grid gap-1 border-t pt-4">
-        {link("mas", "Cuenta y preferencias", SparklesIcon)}
+        {link("mas", "Cuenta y preferencias", SparklesIcon, "nav-mas")}
         {link("ajustes", "Ajustes y copias", SlidersHorizontalIcon)}
+        <button
+          type="button"
+          onClick={(e) => switchTheme(e.currentTarget)}
+          className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {dark ? <SunIcon className="size-[18px]" /> : <MoonIcon className="size-[18px]" />}
+          {dark ? "Modo claro" : "Modo oscuro"}
+        </button>
+        <a
+          href="mailto:soporte.moneycare.orbe@gmail.com"
+          className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LifeBuoyIcon className="size-[18px]" />
+          Ayuda
+        </a>
       </div>
     </aside>
   )
