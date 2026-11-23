@@ -178,6 +178,12 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - La cifra del saldo encoge si el importe es muy largo. El límite de gastos hormiga pasa a $ 10.000 al cambiar a pesos si seguía en el de euros.
 - Modelo: `Settings.moneda` (`loadAll`, `toRows`/`fromRows`, ida y vuelta comprobada) y migración `20261129000000_profiles_moneda.sql` (pendiente de ejecutar). La sincronización ya no se para si falta una columna nueva.
 
+### Dólares estadounidenses
+
+- Tercera moneda: **Dólar estadounidense** (`US$ 1.250,50`, con «US$» para no confundirlo con el peso). En la nómina habla de «Impuestos» y «Aportes» en general.
+- En Ajustes las monedas van en lista y en la bienvenida en tres botones (Euro, Peso arg., Dólar).
+- Migración `20261130000000_profiles_moneda_usd.sql` (pendiente de ejecutar, después de la de `moneda`).
+
 ---
 
 ## Plantilla para nuevas entradas

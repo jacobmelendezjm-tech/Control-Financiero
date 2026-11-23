@@ -1080,7 +1080,7 @@ export function AjustesView({
               <CardDescription>En la que apuntas y ves todos tus importes. Cambiarla no convierte lo que ya tienes apuntado.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div role="radiogroup" aria-label="Moneda" className="grid grid-cols-2 gap-2">
+              <div role="radiogroup" aria-label="Moneda" className="grid gap-2">
                 {(Object.keys(MONEDAS) as Moneda[]).map((m) => (
                   <button
                     key={m}
@@ -1093,12 +1093,12 @@ export function AjustesView({
                       s.moneda === m ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
                     )}
                   >
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 font-heading text-lg font-semibold text-primary">
+                    <span className="grid h-9 min-w-9 shrink-0 place-items-center rounded-full bg-primary/15 px-1.5 font-heading text-base font-semibold text-primary">
                       {MONEDAS[m].sim}
                     </span>
                     <span className="grid leading-tight">
                       <span className="font-medium">{MONEDAS[m].nombre}</span>
-                      <span className="text-xs text-muted-foreground">{m === "EUR" ? "España y zona euro" : "Argentina"}</span>
+                      <span className="text-xs text-muted-foreground">{MONEDAS[m].zona}</span>
                     </span>
                   </button>
                 ))}

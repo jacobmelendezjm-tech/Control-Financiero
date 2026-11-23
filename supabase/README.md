@@ -17,6 +17,7 @@ Ejecutar en orden en **Supabase → SQL Editor** (todas se pueden repetir sin ro
 | `20261127000000_work_turnos.sql` | Turnos rotativos en «Tu jornada»: `work_settings.modo` (fijo/turnos), `extra_regla` (turno/semana) y `turnos` (turnos tipo en JSON). |
 | `20261128000000_profiles_intereses.sql` | `profiles.intereses`: lo que le interesa al usuario (formulario «¿Qué te interesa?»), ordena Inicio. |
 | `20261129000000_profiles_moneda.sql` | `profiles.moneda`: `EUR` o `ARS`. Los importes siguen en céntimos; solo cambia cómo se muestran. Si falta la columna, la app sube el resto sin ella y avisa en la consola. |
+| `20261130000000_profiles_moneda_usd.sql` | Amplía `profiles.moneda` para admitir `USD` (dólar estadounidense). |
 | `private/push_setup.sql` (**no está en git**) | Claves VAPID, secreto del cron y tarea `pg_cron` cada 10 min que llama a `/api/push/cron`. |
 
 ## Recordatorios (notificaciones push)

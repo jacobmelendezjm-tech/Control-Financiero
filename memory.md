@@ -161,7 +161,8 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 
 - Enlace para compartir: `/descargar` (instalar la PWA, pasos por dispositivo, botón Compartir). Imagen de vista previa `public/og-orbe.jpg` declarada a mano (`OG_IMAGE` en `lib/legal.ts`): si una página define su propio `openGraph`, debe incluir `images: [OG_IMAGE]` o se pierde la miniatura. El HTML de origen de la imagen se rehízo con capturas de `video Orbi/04_Imagenes_y_Recursos`.
 
-## Moneda (EUR / ARS)
+## Moneda (EUR / ARS / USD)
 
 - `Settings.moneda` (por defecto `EUR`). `setMoneda()` en `lib/finance.ts` cambia los formateadores globales; se llama en cada render de `FinanzasApp` con `real.settings.moneda`. Para etiquetas usar `sim()` (nunca «€» fijo) y `retenciones()` para IRPF/Ganancias y Seguridad Social/Aportes.
-- Nube: `profiles.moneda` (migración `20261129000000_profiles_moneda.sql`). `upsertTolerant` en `hooks/use-cloud.ts` quita columnas que la base aún no tiene (PGRST204) para no parar la sincronización.
+- Monedas en `MONEDAS` (`lib/finance.ts`): USD usa locale es-AR para que salga `US$ 1.250,50` con coma decimal, como el resto de la app.
+- Nube: `profiles.moneda` (migraciones `20261129000000_profiles_moneda.sql` y `20261130000000_profiles_moneda_usd.sql`). `upsertTolerant` en `hooks/use-cloud.ts` quita columnas que la base aún no tiene (PGRST204) para no parar la sincronización.

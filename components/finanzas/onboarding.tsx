@@ -356,7 +356,7 @@ export function Onboarding({
                   className="h-12 text-lg"
                 />
                 <p className="mt-1 text-sm font-medium">¿En qué moneda llevas tus cuentas?</p>
-                <div role="radiogroup" aria-label="Moneda" className="grid grid-cols-2 gap-2">
+                <div role="radiogroup" aria-label="Moneda" className="grid grid-cols-3 gap-2">
                   {(Object.keys(MONEDAS) as Moneda[]).map((m) => (
                     <button
                       key={m}
@@ -365,14 +365,16 @@ export function Onboarding({
                       aria-checked={data.settings.moneda === m}
                       onClick={() => onMoneda(m)}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left ring-1 ring-foreground/10 transition-colors",
+                        "grid justify-items-center gap-1 rounded-2xl px-2 py-2.5 text-center ring-1 ring-foreground/10 transition-colors",
                         data.settings.moneda === m ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
                       )}
                     >
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 font-heading font-semibold text-primary">
+                      <span className="grid h-8 min-w-8 place-items-center rounded-full bg-primary/15 px-1.5 font-heading text-sm font-semibold text-primary">
                         {MONEDAS[m].sim}
                       </span>
-                      <span className="text-sm font-medium">{MONEDAS[m].nombre}</span>
+                      <span className="text-sm font-medium" title={MONEDAS[m].nombre}>
+                        {MONEDAS[m].corto}
+                      </span>
                     </button>
                   ))}
                 </div>

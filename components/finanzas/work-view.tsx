@@ -525,7 +525,7 @@ function Nominas({
           <Stat
             label={retenciones().retenido}
             value={eur0(y.irpf)}
-            sub={moneda() === "ARS" ? "Retenido por tu empleador" : "Te lo pueden devolver en la renta"}
+            sub={moneda() === "EUR" ? "Te lo pueden devolver en la renta" : "Retenido por tu empleador"}
           />
           <Stat label={retenciones().ssLarga} value={eur0(y.ss)} />
           <Stat label="Horas extra pagadas" value={eur0(y.extras)} />
@@ -614,6 +614,12 @@ function Nominas({
                 Del bruto se descuentan los <b className="text-foreground">aportes</b> (jubilación, obra social y PAMI, en general un
                 17 %) y, si superas el mínimo, el <b className="text-foreground">impuesto a las Ganancias</b>, que el empleador retiene
                 según lo que prevé que cobres. Las horas extra, el aguinaldo o un aumento pueden cambiar la retención y el neto.
+              </p>
+            ) : moneda() === "USD" ? (
+              <p className="text-muted-foreground">
+                Del bruto se descuentan los <b className="text-foreground">impuestos</b> y los{" "}
+                <b className="text-foreground">aportes</b> que marque la ley de tu país. Las horas extra, un bono o un aumento pueden
+                cambiar la retención y, con ella, el neto. Apunta cada nómina para ver cómo varía.
               </p>
             ) : (
               <p className="text-muted-foreground">

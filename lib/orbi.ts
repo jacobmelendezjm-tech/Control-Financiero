@@ -90,7 +90,7 @@ export function buddyTips(view: string, data: FinanceData): OrbiLine[] {
         text: `Este año te han retenido ${eur0(y.irpf)} de ${r} (${pct(y.irpfRate)}).${es ? " Parte puede volver en la renta." : ""}`,
         mood: "think",
       })
-    tips.push({ text: `Si tu neto baja sin motivo, mira ${es ? "el IRPF" : "Ganancias"}: a veces la retención sube al cobrar horas extra.`, mood: "think" })
+    tips.push({ text: `Si tu neto baja sin motivo, mira ${es ? "el IRPF" : moneda() === "ARS" ? "Ganancias" : "los impuestos"}: a veces la retención sube al cobrar horas extra.`, mood: "think" })
   }
   if (view === "hormiga" && hs.year)
     tips.push({ text: `Si recortas tus hormigas a la mitad, ahorras unos ${eur0(hs.year / 2)} al año. ¿Lo intentamos?`, mood: "happy" })

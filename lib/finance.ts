@@ -61,12 +61,14 @@ export interface Settings {
 }
 
 /* ---------- moneda ---------- */
-export type Moneda = "EUR" | "ARS"
-export const MONEDAS: Record<Moneda, { nombre: string; sim: string; locale: string; hormiga: number; ejemplo: string }> = {
-  EUR: { nombre: "Euro", sim: "€", locale: "es-ES", hormiga: 1000, ejemplo: "10" },
-  ARS: { nombre: "Peso argentino", sim: "$", locale: "es-AR", hormiga: 1000000, ejemplo: "10000" },
+export type Moneda = "EUR" | "ARS" | "USD"
+export const MONEDAS: Record<Moneda, { nombre: string; corto: string; zona: string; sim: string; locale: string; hormiga: number }> = {
+  EUR: { nombre: "Euro", corto: "Euro", zona: "España y zona euro", sim: "€", locale: "es-ES", hormiga: 1000 },
+  ARS: { nombre: "Peso argentino", corto: "Peso arg.", zona: "Argentina", sim: "$", locale: "es-AR", hormiga: 1000000 },
+  // Formato con coma decimal (como el resto de la app) y «US$» para no confundirlo con el peso.
+  USD: { nombre: "Dólar estadounidense", corto: "Dólar", zona: "EE. UU. y ahorro en dólares", sim: "US$", locale: "es-AR", hormiga: 1000 },
 }
-export const isMoneda = (x: unknown): x is Moneda => x === "EUR" || x === "ARS"
+export const isMoneda = (x: unknown): x is Moneda => typeof x === "string" && x in MONEDAS
 
 /* ---------- perfil (formulario de bienvenida) ---------- */
 export type Cobro = "fija" | "horas" | "autonomo" | "no"
@@ -218,7 +220,9 @@ export const sim = () => MONEDAS[MON].sim
 export const retenciones = () =>
   MON === "ARS"
     ? { ret: "Ganancias", retenido: "Ganancias retenidas", retLarga: "Impuesto a las Ganancias", ss: "Aportes", ssLarga: "Aportes (jubilación, obra social y PAMI)" }
-    : { ret: "IRPF", retenido: "IRPF retenido", retLarga: "Retención IRPF", ss: "Seg. Social", ssLarga: "Seguridad Social" }
+    : MON === "USD"
+      ? { ret: "Impuestos", retenido: "Impuestos retenidos", retLarga: "Impuestos retenidos", ss: "Aportes", ssLarga: "Aportes sociales" }
+      : { ret: "IRPF", retenido: "IRPF retenido", retLarga: "Retención IRPF", ss: "Seg. Social", ssLarga: "Seguridad Social" }
 const PF = new Intl.NumberFormat("es-ES", { style: "percent", maximumFractionDigits: 0 })
 export const MINUS = "−"
 export const eur = (c: number) => NF.format(Math.abs(c || 0) / 100)
@@ -236,7 +240,7 @@ export const fmtPlain = (c: number) =>
 
 export function parseMoney(input: unknown): number | null {
   if (input == null) return null
-  let s = String(input).trim().replace(/[\s€$]/g, "").replace(/^\+/, "")
+  let s = String(input).trim().replace(/US\$|[\s€$]/gi, "").replace(/^\+/, "")
   let neg = false
   if (/^[-−]/.test(s)) {
     neg = true
