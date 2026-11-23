@@ -139,7 +139,7 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Nuevo paso **«¿Qué te interesa más?»** (gastos, ahorro, horas y turnos, nóminas, gastos hormiga, presupuestos; varios a la vez).
 - Inicio se adapta: los accesos rápidos siguen el orden de tus intereses y la tarjeta de Trabajo solo sale si trabajas o te interesan las horas.
 - El formulario vuelve a salir una vez a quien lo hizo sin intereses (clave `orbe.onboard2`). Si ya elegiste «Continuar sin cuenta», no se vuelve a preguntar por la cuenta.
-- Base de datos: `20261128000000_profiles_intereses.sql` (pendiente de ejecutar).
+- Base de datos: `20261128000000_profiles_intereses.sql` (ejecutada).
 
 ### Campaña audiovisual «Orbe con Orbi» (carpeta `video Orbi/`)
 
