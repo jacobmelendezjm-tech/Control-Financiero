@@ -122,7 +122,7 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - La ficha ahora pregunta **Horario fijo o Turnos rotativos**. Con turnos: tus turnos tipo (Mañana, Tarde, Noche… a un toque), horas de contrato a la semana y cuándo cuentan las extras («alargo mi turno» o «paso de mis horas semanales»), con acceso directo al cuadrante.
 - Las horas extra se calculan con esa regla; los turnos tipo aparecen primero al marcar un día o planificar una semana.
 - «Fichar hoy» sin cuadrante abre el día en «Trabajo» para elegir el turno.
-- Base de datos: `20261127000000_work_turnos.sql` (pendiente de ejecutar en Supabase).
+- Base de datos: `20261127000000_work_turnos.sql` (ejecutada).
 
 ### La cuenta, lo primero al abrir
 
@@ -176,13 +176,13 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Nuevo ajuste **Moneda** (Euro € o Peso argentino $) en Ajustes y en la bienvenida (paso del nombre). Todos los importes se muestran y se escriben con su formato (`$ 1.250.000,50`); cambiarla no convierte lo apuntado.
 - Con pesos, la nómina habla de **Ganancias** y **Aportes** (jubilación, obra social y PAMI) en vez de IRPF y Seguridad Social, y Orbi no menciona la renta española.
 - La cifra del saldo encoge si el importe es muy largo. El límite de gastos hormiga pasa a $ 10.000 al cambiar a pesos si seguía en el de euros.
-- Modelo: `Settings.moneda` (`loadAll`, `toRows`/`fromRows`, ida y vuelta comprobada) y migración `20261129000000_profiles_moneda.sql` (pendiente de ejecutar). La sincronización ya no se para si falta una columna nueva.
+- Modelo: `Settings.moneda` (`loadAll`, `toRows`/`fromRows`, ida y vuelta comprobada) y migración `20261129000000_profiles_moneda.sql` (ejecutada). La sincronización ya no se para si falta una columna nueva.
 
 ### Dólares estadounidenses
 
 - Tercera moneda: **Dólar estadounidense** (`US$ 1.250,50`, con «US$» para no confundirlo con el peso). En la nómina habla de «Impuestos» y «Aportes» en general.
 - En Ajustes las monedas van en lista y en la bienvenida en tres botones (Euro, Peso arg., Dólar).
-- Migración `20261130000000_profiles_moneda_usd.sql` (pendiente de ejecutar, después de la de `moneda`).
+- Migración `20261130000000_profiles_moneda_usd.sql` (ejecutada).
 
 ---
 
