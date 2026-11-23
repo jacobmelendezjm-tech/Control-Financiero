@@ -188,7 +188,7 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 ### Pentest y endurecimiento · ver `SEGURIDAD.md`
 
 - Revisión a fondo de la base de datos (como anónimo, en producción), la API, la web y el código: nadie puede leer ni tocar datos de otro.
-- Corregido: recordatorios que aceptaban cualquier URL y textos/enlaces sin límite y se podían pisar conociendo el endpoint (migración `20261201000000_push_hardening.sql`, pendiente de ejecutar, probada en PGlite con 20 casos), CSP y anti-clickjacking, notificaciones que podían abrir otra web, fórmulas en el CSV y `shadcn` en dependencias de producción.
+- Corregido: recordatorios que aceptaban cualquier URL y textos/enlaces sin límite y se podían pisar conociendo el endpoint (migración `20261201000000_push_hardening.sql`, ejecutada y comprobada en producción, probada antes en PGlite con 20 casos), CSP y anti-clickjacking, notificaciones que podían abrir otra web, fórmulas en el CSV y `shadcn` en dependencias de producción.
 - Al cerrar sesión se suelta la suscripción de avisos de ese navegador para que siga funcionando sin cuenta.
 
 ---

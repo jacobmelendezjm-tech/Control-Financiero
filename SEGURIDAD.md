@@ -29,7 +29,8 @@ No se ha encontrado ninguna forma de leer, cambiar ni borrar los datos de otra p
 
 ## Pendiente (lo tiene que hacer el titular)
 
-1. **Ejecutar** `supabase/migrations/20261201000000_push_hardening.sql` en el SQL Editor de Supabase.
-2. **Supabase › Authentication › Rate Limits:** dejar límites bajos para el envío de códigos (p. ej. 30 correos/hora) para que nadie gaste el cupo de Brevo.
-3. **Opcional:** activar CAPTCHA (Turnstile) en Authentication si aparecen registros falsos.
-4. **Repetir esta revisión** cada vez que se añada una tabla, una función o un proveedor nuevo.
+1. ~~Ejecutar `20261201000000_push_hardening.sql`~~ — hecho; comprobado en producción (un endpoint ajeno devuelve «Servicio de notificaciones no admitido»).
+2. ~~Límites de Authentication~~ — hecho: 30 correos/h, 30 verificaciones y 30 inicios de sesión cada 5 min por IP, 60 s entre correos al mismo usuario.
+3. **Recomendado:** caducidad del código de acceso en 10 minutos (Authentication › Sign In / Providers › Email › *Email OTP Expiration* = 600 s).
+4. **Opcional:** activar CAPTCHA (Turnstile) en Authentication si aparecen registros falsos.
+5. **Repetir esta revisión** cada vez que se añada una tabla, una función o un proveedor nuevo.
