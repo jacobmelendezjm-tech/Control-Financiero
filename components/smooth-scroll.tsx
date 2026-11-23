@@ -9,25 +9,25 @@ declare global {
   }
 }
 
-/** Smooth scroll con Lenis (como en IRONLOG). Con "reducir movimiento" se queda el scroll nativo. */
+/**
+ * Smooth scroll con Lenis. Con «reducir movimiento» se queda el scroll nativo.
+ *  - `lerp` (en vez de una duración fija): cada giro de rueda se suma al anterior sin reiniciar la
+ *    animación, así no da tirones ni sigue deslizando de más con ratón o panel táctil.
+ *  - `allowNestedScroll`: las zonas con su propio scroll (desplegables, tablas, diálogos) se
+ *    desplazan ellas en vez de mover la página (antes parecía que el scroll se quedaba pegado).
+ */
 export function SmoothScroll({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
     const instance = new Lenis({
-      duration: 1.1,
-      easing: (t) => 1 - Math.pow(1 - t, 4),
+      lerp: 0.12,
       smoothWheel: true,
+      allowNestedScroll: true,
+      autoRaf: true,
       anchors: { offset: -72 },
     })
     window.__lenis = instance
-    let raf = 0
-    const loop = (time: number) => {
-      instance.raf(time)
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
     return () => {
-      cancelAnimationFrame(raf)
       instance.destroy()
       window.__lenis = null
     }

@@ -137,7 +137,7 @@ function TxRow({ t, cm, onOpen }: { t: Tx; cm: Record<string, Category>; onOpen:
 
 function DemoBanner({ onStart }: { onStart: () => void }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3 rounded-full bg-card/80 py-1.5 pr-1.5 pl-4 text-sm ring-1 ring-foreground/10 backdrop-blur-xl">
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-full bg-card/80 py-1.5 pr-1.5 pl-4 text-sm ring-1 ring-foreground/10 backdrop-blur-xl lg:backdrop-blur-none">
       <span className="flex items-center gap-2 font-medium">
         <i aria-hidden className="size-2 animate-pulse rounded-full bg-gold" /> Datos de ejemplo
       </span>

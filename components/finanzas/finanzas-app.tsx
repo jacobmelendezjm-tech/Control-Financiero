@@ -909,7 +909,7 @@ export function FinanzasApp() {
     <>
       {/* Fondo vivo: shader «Silk» detrás de todo y un velo del color del tema para leer bien. */}
       <div aria-hidden className="fixed inset-0 -z-10">
-        <SilkShader className="absolute inset-0" />
+        <SilkShader lite className="absolute inset-0" />
         <div className="absolute inset-0 bg-background/[0.86] dark:bg-background/[0.8]" />
       </div>
       <Splash />

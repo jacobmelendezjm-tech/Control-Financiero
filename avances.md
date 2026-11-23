@@ -160,6 +160,11 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 
 - `Mejoras_Futuro.md` › «10. Versión monetizable: Orbe Pro»: freemium sin anuncios (lo actual sigue gratis), funciones Pro, precio orientativo, cobro con Stripe y Google Play, parte técnica, requisitos legales y fiscales y plan por fases. Solo es un plan: no se ha implementado nada.
 
+### Scroll suave del escritorio arreglado
+
+- Lenis pasa de una duración fija (se reiniciaba con cada giro de rueda y daba tirones) a `lerp`, y con `allowNestedScroll` las zonas con scroll propio (desplegables, tablas, diálogos) se mueven ellas en vez de la página, que era lo que hacía parecer que el scroll se quedaba pegado.
+- El fondo animado de pantalla completa se dibuja a media resolución y a ~30 fps (`SilkShader lite`), y en escritorio las tarjetas ya no desenfocan el fondo (`lg:backdrop-blur-none`): menos trabajo para la GPU mientras se desplaza.
+
 ---
 
 ## Plantilla para nuevas entradas

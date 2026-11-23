@@ -283,7 +283,11 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
 }
 
 /** Fondo animado «Silk». Se coloca con position absolute/fixed detrás del contenido. */
-export function SilkShader({ className, speed = 0.73 }: { className?: string; speed?: number }) {
+/**
+ * `lite`: para el fondo a pantalla completa (va bajo un velo): media resolución y ~30 fps,
+ * así no compite con el scroll en pantallas grandes.
+ */
+export function SilkShader({ className, speed = 0.73, lite = false }: { className?: string; speed?: number; lite?: boolean }) {
   const ref = React.useRef<HTMLCanvasElement>(null)
 
   React.useEffect(() => {
@@ -327,7 +331,8 @@ export function SilkShader({ className, speed = 0.73 }: { className?: string; sp
     const t0 = performance.now()
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // En modo ligero, a media resolución: bajo el velo se ve igual y cuesta de 4 a 16 veces menos.
+      const dpr = lite ? 0.5 : Math.min(window.devicePixelRatio || 1, 2)
       const w = Math.max(1, Math.round(canvas.clientWidth * dpr))
       const h = Math.max(1, Math.round(canvas.clientHeight * dpr))
       if (canvas.width !== w || canvas.height !== h) {
@@ -341,8 +346,13 @@ export function SilkShader({ className, speed = 0.73 }: { className?: string; sp
       gl.uniform4f(uScene, canvas.width, canvas.height, ((now - t0) / 1000) * speed, 4.0)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
     }
+    // Se mueve muy despacio: con ~30 fps basta y deja la GPU libre para el scroll.
+    let last = 0
     const loop = (now: number) => {
-      draw(now)
+      if (!lite || now - last >= 32) {
+        last = now
+        draw(now)
+      }
       raf = requestAnimationFrame(loop)
     }
     const start = () => {
@@ -377,7 +387,7 @@ export function SilkShader({ className, speed = 0.73 }: { className?: string; sp
       gl.deleteShader(fs)
       gl.deleteBuffer(buf)
     }
-  }, [speed])
+  }, [speed, lite])
 
   return <canvas ref={ref} aria-hidden className={cn("pointer-events-none block h-full w-full", className)} />
 }

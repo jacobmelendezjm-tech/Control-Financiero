@@ -114,7 +114,7 @@ export function Stat({
   className?: string
 }) {
   return (
-    <div className={cn("grid min-w-0 gap-0.5 rounded-2xl bg-card/75 p-3.5 ring-1 backdrop-blur-xl ring-foreground/8", className)}>
+    <div className={cn("grid min-w-0 gap-0.5 rounded-2xl bg-card/75 p-3.5 ring-1 backdrop-blur-xl lg:backdrop-blur-none ring-foreground/8", className)}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="truncate font-heading text-xl font-semibold tracking-tight tabular-nums">{value}</span>
       {sub ? <span className="text-[11px] text-muted-foreground">{sub}</span> : null}

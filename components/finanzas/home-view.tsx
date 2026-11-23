@@ -315,7 +315,7 @@ export function HomeView({
                   "grid size-14 place-items-center rounded-2xl ring-1 ring-foreground/8 transition-colors",
                   hi && !clockedToday
                     ? "bg-gold text-[#1f2b2d] ring-0"
-                    : "bg-card/75 backdrop-blur-xl"
+                    : "bg-card/75 backdrop-blur-xl lg:backdrop-blur-none"
                 )}
               >
                 <Icon className="size-5.5" strokeWidth={1.9} />
@@ -499,7 +499,7 @@ export function HomeView({
             type="button"
             data-tour="hormiga"
             onClick={() => onGo("hormiga")}
-            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 ring-foreground/8 backdrop-blur-xl active:scale-[0.98]"
+            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 ring-foreground/8 backdrop-blur-xl lg:backdrop-blur-none active:scale-[0.98]"
           >
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <BugIcon className="size-3.5" /> Gastos hormiga
@@ -514,7 +514,7 @@ export function HomeView({
           <button
             type="button"
             onClick={() => onGo("metas")}
-            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 ring-foreground/8 backdrop-blur-xl active:scale-[0.98]"
+            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 ring-foreground/8 backdrop-blur-xl lg:backdrop-blur-none active:scale-[0.98]"
           >
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <PiggyBankIcon className="size-3.5" /> Ahorrado

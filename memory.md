@@ -150,3 +150,8 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 
 - Software privativo: `LICENSE` («Todos los derechos reservados»), `package.json` con `UNLICENSED`. Titular: Jacob Meléndez (constante `TITULAR` en `lib/legal.ts`).
 - Si cambian los datos que salen del dispositivo (nuevo proveedor, analítica, pagos), actualiza `/privacidad` y la fecha `ACTUALIZADO`. Si un día hay ingresos o publicidad, el aviso legal necesitará NIF y domicilio (LSSI art. 10).
+
+## Scroll suave
+
+- `components/smooth-scroll.tsx`: Lenis con `lerp: 0.12`, `allowNestedScroll` y `autoRaf`. No volver a `duration` (da tirones con ratón y panel táctil).
+- Fondo: `<SilkShader lite>` (media resolución, ~30 fps). En escritorio, las tarjetas sin `backdrop-blur` (`lg:backdrop-blur-none`); el desenfoque sobre un fondo animado se recalcula en cada fotograma.
