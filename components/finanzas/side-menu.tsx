@@ -127,7 +127,7 @@ export function SideMenu({
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
         <DialogPrimitive.Popup
           data-lenis-prevent
-          className="pt-safe pb-safe fixed inset-y-0 right-0 z-50 flex w-[min(340px,88vw)] flex-col bg-card shadow-2xl ring-1 ring-foreground/10 outline-none duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right"
+          className="pt-safe pb-safe fixed inset-y-0 right-0 z-50 flex w-[min(340px,88vw)] flex-col bg-card/80 shadow-2xl backdrop-blur-2xl ring-1 ring-foreground/10 outline-none duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right"
         >
           <div className="flex items-center justify-between px-4 pt-3 pb-2">
             <DialogPrimitive.Title render={<div />}>

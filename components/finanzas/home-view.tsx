@@ -17,7 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CatIcon, Chip, Eyebrow, Meter, MiniBars, OrbitDeco, SectionTitle, WEEKDAYS, WEEKDAY_NAMES, useCountUp } from "@/components/finanzas/kit"
+import { CatIcon, Chip, Eyebrow, Meter, MiniBars, SectionTitle, WEEKDAYS, WEEKDAY_NAMES, useCountUp } from "@/components/finanzas/kit"
 import {
   CUR,
   MINUS,
@@ -42,6 +42,7 @@ import {
 } from "@/lib/finance"
 import { addDays, dayTotals, fmtH, fmtMin, monthDays, netPerHour, summarize, weekStart, weekTarget } from "@/lib/work"
 import { Orbi } from "@/components/finanzas/orbi"
+import { SilkShader } from "@/components/silk-shader"
 import { cn } from "@/lib/utils"
 
 export type HomeGo = "resumen" | "movimientos" | "trabajo" | "nominas" | "hormiga" | "metas" | "presupuesto"
@@ -119,8 +120,8 @@ export function HomeView({
   const tip = buildTip({ hs, st, vsPrev, mo, perHour, rate: st.rate })
 
   return (
-    <div className="view-in grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
-      <div className="grid min-w-0 gap-4">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+      <div className="stagger grid min-w-0 gap-4">
         <div className="px-1">
           <Eyebrow>{greeting()}</Eyebrow>
           <p className="font-heading text-2xl font-semibold tracking-tight">
@@ -132,11 +133,12 @@ export function HomeView({
         <section
           data-tour="saldo"
           aria-label="Saldo"
-          className="bg-hero-gradient relative overflow-hidden rounded-[28px] p-5 text-hero-foreground shadow-[0_20px_40px_-20px_rgb(13_138_158/0.6)]"
+          className="relative isolate overflow-hidden rounded-[28px] bg-[#03120E] p-5 text-white shadow-[0_24px_48px_-20px_rgb(14_124_90/0.7)]"
         >
-          <OrbitDeco />
+          <SilkShader className="absolute inset-0 -z-10" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-black/60 via-black/30 to-black/55" />
           <div className="relative flex items-start justify-between gap-3">
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-hero-foreground/70 uppercase">Saldo total</p>
+            <p className="text-[11px] font-semibold tracking-[0.16em] text-white/75 uppercase">Saldo total</p>
             {txs.length ? (
               <Chip tone="gold">
                 {st.bal >= 0 ? <TrendingUpIcon className="size-3.5" /> : <TrendingDownIcon className="size-3.5" />}
@@ -147,9 +149,14 @@ export function HomeView({
           <p className="relative mt-2 font-heading text-[clamp(2.4rem,11vw,3.4rem)] leading-none font-semibold tracking-tight tabular-nums">
             {eurM(shownTotal)}
           </p>
-          <p className="relative mt-2 text-sm text-hero-foreground/75">
-            Entran {eur0(st.inc)} · salen {eur0(st.exp)}
-            {st.rate != null && st.inc > 0 ? ` · ahorras ${pct(Math.max(0, st.rate))}` : ""}
+          <p className="relative mt-2 text-sm text-white/85">
+            <span className="inline-flex items-center gap-1">
+              <ArrowDownLeftIcon className="size-3.5" /> {eur0(st.inc)}
+            </span>
+            <span className="ml-3 inline-flex items-center gap-1">
+              <ArrowUpRightIcon className="size-3.5" /> {eur0(st.exp)}
+            </span>
+            {st.rate != null && st.inc > 0 ? <span className="ml-3">{pct(Math.max(0, st.rate))} ahorro</span> : null}
           </p>
           <div data-tour="botones" className="relative mt-5 grid grid-cols-2 gap-2.5">
             <Button
@@ -189,7 +196,7 @@ export function HomeView({
               <span
                 className={cn(
                   "grid size-14 place-items-center rounded-2xl ring-1 ring-foreground/8 transition-colors",
-                  hi && !clockedToday ? "bg-gold text-[#1f2b2d] ring-0" : "bg-card"
+                  hi && !clockedToday ? "bg-gold text-[#1f2b2d] ring-0" : "bg-card/75 backdrop-blur-xl"
                 )}
               >
                 <Icon className="size-5.5" strokeWidth={1.9} />
@@ -268,9 +275,8 @@ export function HomeView({
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <i className="size-2 rounded-full bg-gold" aria-hidden />
               {weekTotal > 0
-                ? `El ${WEEKDAY_NAMES[wdOf(maxDay)]} fue tu día de más gasto · ${eur(weekTotal)} en 7 días`
-                : "Sin gastos en los últimos 7 días"}
-              {vsPrev != null && isFinite(vsPrev) ? ` · comparado con el mes pasado a día ${pad(dayN)}` : ""}
+                ? `Más gasto: ${WEEKDAY_NAMES[wdOf(maxDay)]} · ${eur(weekTotal)} en 7 días`
+                : "Sin gastos esta semana"}
             </p>
           </CardContent>
         </Card>
@@ -298,7 +304,7 @@ export function HomeView({
         ) : null}
       </div>
 
-      <div className="grid min-w-0 gap-4">
+      <div className="stagger grid min-w-0 gap-4">
         {/* Trabajo */}
         <Card data-tour="trabajo">
           <CardContent className="grid gap-3">
@@ -329,7 +335,7 @@ export function HomeView({
             type="button"
             data-tour="hormiga"
             onClick={() => onGo("hormiga")}
-            className="grid gap-1 rounded-3xl bg-card p-4 text-left ring-1 ring-foreground/8 active:scale-[0.98]"
+            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 backdrop-blur-xl ring-foreground/8 active:scale-[0.98]"
           >
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <BugIcon className="size-3.5" /> Gastos hormiga
@@ -342,7 +348,7 @@ export function HomeView({
           <button
             type="button"
             onClick={() => onGo("metas")}
-            className="grid gap-1 rounded-3xl bg-card p-4 text-left ring-1 ring-foreground/8 active:scale-[0.98]"
+            className="grid gap-1 rounded-3xl bg-card/75 p-4 text-left ring-1 backdrop-blur-xl ring-foreground/8 active:scale-[0.98]"
           >
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <PiggyBankIcon className="size-3.5" /> Ahorrado

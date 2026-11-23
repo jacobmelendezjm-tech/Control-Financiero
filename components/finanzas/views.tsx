@@ -137,13 +137,12 @@ function TxRow({ t, cm, onOpen }: { t: Tx; cm: Record<string, Category>; onOpen:
 
 function DemoBanner({ onStart }: { onStart: () => void }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/60 px-4 py-3 text-sm">
-      <p className="flex-[1_1_260px]">
-        <strong>Datos de ejemplo.</strong> Así se verá tu caja con unos meses de uso. Desaparecen en cuanto apuntes tu
-        primer movimiento.
-      </p>
-      <Button size="sm" variant="outline" onClick={onStart}>
-        Empezar desde cero
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-full bg-card/80 py-1.5 pr-1.5 pl-4 text-sm ring-1 ring-foreground/10 backdrop-blur-xl">
+      <span className="flex items-center gap-2 font-medium">
+        <i aria-hidden className="size-2 animate-pulse rounded-full bg-gold" /> Datos de ejemplo
+      </span>
+      <Button size="sm" className="rounded-full" onClick={onStart}>
+        Empezar
       </Button>
     </div>
   )

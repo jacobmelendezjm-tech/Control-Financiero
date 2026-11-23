@@ -5,7 +5,6 @@ import "./globals.css"
 import { KeyboardAware } from "@/components/keyboard-aware"
 import { SmoothScroll } from "@/components/smooth-scroll"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -48,7 +47,6 @@ export default function RootLayout({
         <ThemeProvider>
           <KeyboardAware />
           <SmoothScroll>{children}</SmoothScroll>
-          <Toaster position="top-center" />
         </ThemeProvider>
       </body>
     </html>

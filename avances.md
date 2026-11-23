@@ -109,6 +109,14 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - **Icono de nube**: verde con ✓ si está guardado en la nube, rojo con ! si no.
 - Base de datos: `20261126000000_work_week_plans.sql` (semanas planificadas, «cubre» y notas), con sincronización de borrados de horarios.
 
+### Personalidad: shader, cristal, isla dinámica y apertura nueva
+
+- **Shader «Silk»** (WebGL1, sin librerías; `components/silk-shader.tsx`) de fondo en toda la app, a toda intensidad en la tarjeta del saldo y en la apertura.
+- **Glassmorphism**: tarjetas, cabecera, barras, menú y diálogos translúcidos con desenfoque.
+- **Isla dinámica** (`components/dynamic-island.tsx`, `lib/notify.ts`): todos los avisos salen como una píldora que se expande desde arriba; mini píldora «Guardando» al sincronizar.
+- **Apertura nueva**: línea de crecimiento dorada, monedas de luz, rejilla en perspectiva, «Ahorra · Planifica · Crece» → logo → «Tu futuro, en órbita», salida en iris.
+- Menos texto en Inicio y entrada escalonada de tarjetas.
+
 ---
 
 ## Plantilla para nuevas entradas

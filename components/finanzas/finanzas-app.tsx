@@ -19,7 +19,7 @@ import {
   SparklesIcon,
   TargetIcon,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/notify"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -43,6 +43,8 @@ import { CloudBadge } from "@/components/finanzas/cloud-badge"
 import { Onboarding, type OnboardAnswers } from "@/components/finanzas/onboarding"
 import { OrbiBuddy, OrbiTour } from "@/components/finanzas/orbi-guide"
 import { Splash } from "@/components/finanzas/splash"
+import { SilkShader } from "@/components/silk-shader"
+import { DynamicIsland } from "@/components/dynamic-island"
 import { PayslipDialog, ShiftDialog, WorkCfgDialog, type PayslipSaveResult } from "@/components/finanzas/work-dialogs"
 import { ScheduleDialog, WeekPlanDialog } from "@/components/finanzas/schedule-dialog"
 import { DayDialog, type DayResult } from "@/components/finanzas/day-dialog"
@@ -607,7 +609,7 @@ export function FinanzasApp() {
         return
       }
       const res = importCSVRows(parseCSV(text), real.settings.cats)
-      if ("error" in res) return toast.error(res.error)
+      if ("error" in res) return toast.error(res.error || "No he podido leer el archivo.")
       const existing = new Set(Object.values(real.months).flat().map(txKey))
       const fresh = res.txs.filter((t) => !existing.has(txKey(t)))
       const dup = res.txs.length - fresh.length
@@ -881,7 +883,13 @@ export function FinanzasApp() {
 
   return (
     <>
+      {/* Fondo vivo: shader «Silk» detrás de todo y un velo del color del tema para leer bien. */}
+      <div aria-hidden className="fixed inset-0 -z-10">
+        <SilkShader className="absolute inset-0" />
+        <div className="absolute inset-0 bg-background/[0.86] dark:bg-background/[0.8]" />
+      </div>
       <Splash />
+      <DynamicIsland busy={!!cloud.user && cloud.status === "syncing"} />
       <OrbiTour open={tour} onClose={() => setTour(false)} />
       <ConflictDialog cloud={cloud} />
       {loaded && onboard ? (
@@ -909,7 +917,7 @@ export function FinanzasApp() {
       />
       <div className="lg:pl-[260px]">
       <div className="mx-auto max-w-[1080px] px-4 pb-52 lg:px-8 lg:pb-16">
-        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/85 px-4 pb-2 backdrop-blur-xl lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
+        <header className="pt-safe sticky top-0 z-20 -mx-4 mb-3 bg-background/55 px-4 pb-2 backdrop-blur-2xl lg:-mx-8 lg:mb-5 lg:px-8 lg:pt-5 lg:pb-3">
           <div className="flex h-11 items-center justify-between gap-3">
             {view === "inicio" ? (
               <>
@@ -1166,7 +1174,7 @@ function BottomNav({ tab, onGo, onAdd }: { tab: Tab; onGo: (v: View) => void; on
   return (
     <nav
       aria-label="Secciones"
-      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t bg-card/95 px-2 pt-1.5 backdrop-blur-xl md:px-[max(0.5rem,calc(50vw-280px))] lg:hidden"
+      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 items-end border-t bg-card/65 px-2 pt-1.5 backdrop-blur-2xl md:px-[max(0.5rem,calc(50vw-280px))] lg:hidden"
     >
       {item("inicio", "Inicio", HouseIcon)}
       {item("resumen", "Análisis", ChartPieIcon)}
@@ -1221,7 +1229,7 @@ function SideNav({ view, onGo, onAdd }: { view: View; onGo: (v: View) => void; o
   return (
     <aside
       aria-label="Secciones"
-      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/70 px-4 pt-6 pb-5 backdrop-blur-xl lg:flex"
+      className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col gap-6 border-r bg-card/55 px-4 pt-6 pb-5 backdrop-blur-2xl lg:flex"
     >
       <div className="px-2">
         <OrbeWordmark />
