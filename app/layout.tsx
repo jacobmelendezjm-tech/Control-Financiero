@@ -5,7 +5,7 @@ import "./globals.css"
 import { KeyboardAware } from "@/components/keyboard-aware"
 import { SmoothScroll } from "@/components/smooth-scroll"
 import { ThemeProvider } from "@/components/theme-provider"
-import { COPYRIGHT, TITULAR } from "@/lib/legal"
+import { COPYRIGHT, OG_IMAGE, TITULAR, WEB } from "@/lib/legal"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -13,9 +13,27 @@ const sora = Sora({ subsets: ["latin"], variable: "--font-display" })
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["italic", "normal"], variable: "--font-serif" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
+const DESCRIPCION = "Gastos, ahorro, nóminas y horas extra en tu móvil, con Orbi como asistente. Gratis y sin anuncios."
+
 export const metadata: Metadata = {
+  metadataBase: new URL(WEB),
   title: "Orbe · Control financiero",
-  description: "Ingresos, gastos, gastos hormiga, ahorro, nóminas y horas de trabajo en tu móvil.",
+  description: DESCRIPCION,
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    siteName: "Orbe",
+    url: "/",
+    title: "Orbe · Tu dinero y tus turnos, en un solo sitio",
+    description: DESCRIPCION,
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Orbe · Tu dinero y tus turnos, en un solo sitio",
+    description: DESCRIPCION,
+    images: [OG_IMAGE],
+  },
   applicationName: "Orbe",
   authors: [{ name: TITULAR }],
   creator: TITULAR,

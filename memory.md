@@ -156,3 +156,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - `components/smooth-scroll.tsx`: en escritorio (`hover: hover` y `pointer: fine`) **no hay Lenis**: scroll suave nativo de Chrome, que va en su propio hilo (Lenis daba tirones al usuario, con portátil de doble gráfica: Radeon 780M integrada + RTX 5060; Chrome usa la integrada). En táctil, Lenis con `lerp: 0.12`, `allowNestedScroll` y `autoRaf`. No volver a `duration`.
 - `lib/scroll.ts`: sin Lenis, `setScrollLocked` pone `html.scroll-locked` (overflow: clip) y `scrollToY` usa `behavior: "instant"` / `"smooth"`.
 - Fondo: `<SilkShader lite>` (media resolución, ~30 fps). En escritorio, las tarjetas y el menú lateral sin `backdrop-blur`, y la cabecera con `lg:backdrop-blur-md`; el desenfoque sobre un fondo animado se recalcula en cada fotograma.
+
+## Compartir
+
+- Enlace para compartir: `/descargar` (instalar la PWA, pasos por dispositivo, botón Compartir). Imagen de vista previa `public/og-orbe.jpg` declarada a mano (`OG_IMAGE` en `lib/legal.ts`): si una página define su propio `openGraph`, debe incluir `images: [OG_IMAGE]` o se pierde la miniatura. El HTML de origen de la imagen se rehízo con capturas de `video Orbi/04_Imagenes_y_Recursos`.

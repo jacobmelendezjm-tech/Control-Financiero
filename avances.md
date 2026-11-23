@@ -166,6 +166,11 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - El fondo animado de pantalla completa se dibuja a media resolución y a ~30 fps (`SilkShader lite`), y en escritorio las tarjetas ya no desenfocan el fondo (`lg:backdrop-blur-none`): menos trabajo para la GPU mientras se desplaza.
 - Seguía a tirones: en escritorio se quita Lenis y se usa el scroll suave nativo de Chrome, que no depende de JavaScript. Medido en Chrome con la gráfica real (Radeon 780M integrada, la que usa Chrome en el portátil): 144 fps sin fotogramas largos. La cabecera desenfoca menos y el menú lateral ya no desenfoca.
 
+### Enlace para compartir: página de descarga e imagen de vista previa
+
+- Nueva página **`/descargar`**: botón para instalar la app (o abrirla), pasos para Android, iPhone y ordenador, botón «Compartir» (menú de compartir del móvil o copiar enlace) y lo que hace Orbe.
+- Imagen al compartir (`public/og-orbe.jpg`, 1200 × 630, con capturas reales y Orbi) y etiquetas Open Graph y Twitter en toda la app (`OG_IMAGE` en `lib/legal.ts`, `metadataBase` en el layout).
+
 ---
 
 ## Plantilla para nuevas entradas
