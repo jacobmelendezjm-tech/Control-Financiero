@@ -156,6 +156,10 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - `LICENSE` privativo, `"license": "UNLICENSED"` en `package.json` y metadatos de autoría.
 - `video Orbi/` fuera del repositorio (`.gitignore`) y del lint.
 
+### Plan de la versión monetizable
+
+- `Mejoras_Futuro.md` › «10. Versión monetizable: Orbe Pro»: freemium sin anuncios (lo actual sigue gratis), funciones Pro, precio orientativo, cobro con Stripe y Google Play, parte técnica, requisitos legales y fiscales y plan por fases. Solo es un plan: no se ha implementado nada.
+
 ---
 
 ## Plantilla para nuevas entradas
