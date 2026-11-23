@@ -15,10 +15,12 @@ import {
   monthLabel,
   parseMoney,
   parsePos,
+  retenciones,
+  sim,
   uid,
+  type ExtraRegla,
   type Payslip,
   type Shift,
-  type ExtraRegla,
   type ShiftKind,
   type Turno,
   type WorkCfg,
@@ -275,13 +277,13 @@ export function PayslipDialog({
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Bruto (€)" htmlFor="ps-b">
+          <Field label={`Bruto (${sim()})`} htmlFor="ps-b">
             <Input id="ps-b" inputMode="decimal" placeholder="1.000" value={bruto} onChange={(e) => setBruto(e.target.value)} className="font-mono" />
           </Field>
-          <Field label="IRPF (%)" htmlFor="ps-i">
+          <Field label={`${retenciones().ret} (%)`} htmlFor="ps-i">
             <Input id="ps-i" inputMode="decimal" placeholder="2" value={irpfPct} onChange={(e) => setIrpfPct(e.target.value)} className="font-mono" />
           </Field>
-          <Field label="Seg. Social (€)" htmlFor="ps-ss">
+          <Field label={`${retenciones().ss} (${sim()})`} htmlFor="ps-ss">
             <Input
               id="ps-ss"
               inputMode="decimal"
@@ -291,18 +293,18 @@ export function PayslipDialog({
               className="font-mono"
             />
           </Field>
-          <Field label="Otros descuentos (€)" htmlFor="ps-o">
+          <Field label={`Otros descuentos (${sim()})`} htmlFor="ps-o">
             <Input id="ps-o" inputMode="decimal" placeholder="0" value={otros} onChange={(e) => setOtros(e.target.value)} className="font-mono" />
           </Field>
         </div>
         {b ? (
           <p className="-mt-1 rounded-xl bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-            Retención IRPF: <b className="font-mono text-foreground">{eur(irpfC)}</b> · Seguridad Social:{" "}
+            {retenciones().retLarga}: <b className="font-mono text-foreground">{eur(irpfC)}</b> · {retenciones().ss}:{" "}
             <b className="font-mono text-foreground">{eur(ssC)}</b>
             {ss.trim() ? "" : " (estimada al 6,48 %)"}
           </p>
         ) : null}
-        <Field label="Neto cobrado (€)" htmlFor="ps-n">
+        <Field label={`Neto cobrado (${sim()})`} htmlFor="ps-n">
           <Input
             id="ps-n"
             inputMode="decimal"
@@ -315,7 +317,7 @@ export function PayslipDialog({
             className="h-14 font-mono text-2xl font-semibold md:text-2xl"
           />
         </Field>
-        <Field label="Horas extra pagadas en esta nómina (€)" htmlFor="ps-x">
+        <Field label={`Horas extra pagadas en esta nómina (${sim()})`} htmlFor="ps-x">
           <Input id="ps-x" inputMode="decimal" placeholder="0" value={extras} onChange={(e) => setExtras(e.target.value)} className="font-mono" />
         </Field>
         {suggestExtras.min ? (
@@ -583,10 +585,10 @@ export function WorkCfgDialog({
         )}
 
         <div className="grid grid-cols-2 gap-2.5">
-          <Field label="€ por hora (bruto)" htmlFor="wc-ph">
+          <Field label={`${sim()} por hora (bruto)`} htmlFor="wc-ph">
             <Input id="wc-ph" inputMode="decimal" placeholder="opcional" value={ph} onChange={(e) => setPh(e.target.value)} />
           </Field>
-          <Field label="€ por hora extra" htmlFor="wc-pe">
+          <Field label={`${sim()} por hora extra`} htmlFor="wc-pe">
             <Input id="wc-pe" inputMode="decimal" placeholder="opcional" value={pe} onChange={(e) => setPe(e.target.value)} />
           </Field>
         </div>

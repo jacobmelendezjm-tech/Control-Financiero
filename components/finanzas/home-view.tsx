@@ -223,6 +223,8 @@ export function HomeView({
   const ahorrado = Math.max(0, st.bal)
 
   const shownTotal = useCountUp(total)
+  // Con importes muy largos (p. ej. millones de pesos) la cifra encoge para caber en la tarjeta.
+  const totalChars = eurM(total).length
   const tip = buildTip({ hs, st, vsPrev, mo, perHour, rate: st.rate })
 
   return (
@@ -239,7 +241,7 @@ export function HomeView({
         <section
           data-tour="saldo"
           aria-label="Saldo"
-          className="relative isolate overflow-hidden rounded-[28px] bg-[#0f1a1c] p-5 text-white shadow-[0_24px_48px_-20px_rgb(13_138_158/0.7)]"
+          className="@container relative isolate overflow-hidden rounded-[28px] bg-[#0f1a1c] p-5 text-white shadow-[0_24px_48px_-20px_rgb(13_138_158/0.7)]"
         >
           <SilkShader className="absolute inset-0 -z-10" />
           <div
@@ -261,7 +263,10 @@ export function HomeView({
               </Chip>
             ) : null}
           </div>
-          <p className="relative mt-2 font-heading text-[clamp(2.4rem,11vw,3.4rem)] leading-none font-semibold tracking-tight tabular-nums">
+          <p
+            className="relative mt-2 font-heading text-[clamp(2.4rem,11vw,3.4rem)] leading-none font-semibold tracking-tight tabular-nums"
+            style={totalChars > 10 ? { fontSize: `min(clamp(2.4rem, 11vw, 3.4rem), calc(100cqw / ${(totalChars * 0.64).toFixed(2)}))` } : undefined}
+          >
             {eurM(shownTotal)}
           </p>
           <p className="relative mt-2 text-sm text-white/85">

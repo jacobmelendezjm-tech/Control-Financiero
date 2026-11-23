@@ -113,7 +113,7 @@ export function buildAgenda(data: FinanceData, prefs: ReminderPrefs): AgendaItem
           id: `nomina-${mo}`,
           at: `${d}T10:00`,
           title: "¡Día de cobro! 💸",
-          body: "¿Ha llegado tu nómina? Apúntala para ver tu neto, tu IRPF y cuánto puedes ahorrar.",
+          body: `¿Ha llegado tu nómina? Apúntala para ver tu neto, tu ${data.settings.moneda === "ARS" ? "retención de Ganancias" : "IRPF"} y cuánto puedes ahorrar.`,
           url: "/#nominas",
           tag: "orbe-nomina",
         })

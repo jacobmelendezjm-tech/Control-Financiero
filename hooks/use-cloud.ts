@@ -110,6 +110,23 @@ function liveSet(rows: Record<Table, Record<string, unknown>[]>): RowSet {
   return rs
 }
 
+/*
+ * Columnas que la base de datos todavía no tiene (falta ejecutar una migración nueva).
+ * En vez de parar la sincronización, se suben las filas sin esa columna y se avisa en la consola.
+ */
+const missingCols = new Set<string>()
+async function upsertTolerant(sb: SupabaseClient, t: string, rows: Record<string, unknown>[], onConflict: string) {
+  for (let tries = 0; tries < 5; tries++) {
+    const body = rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !missingCols.has(`${t}.${k}`))))
+    const { error } = await sb.from(t).upsert(body, { onConflict })
+    const col = error?.code === "PGRST204" ? /'([^']+)' column/.exec(error.message || "")?.[1] : undefined
+    if (!col || missingCols.has(`${t}.${col}`)) return error
+    missingCols.add(`${t}.${col}`)
+    console.warn(`[Orbe nube] Falta la columna ${t}.${col}: ejecuta la última migración de supabase/migrations.`)
+  }
+  return null
+}
+
 export function useCloud(store: FinanceStore) {
   const [user, setUser] = React.useState<User | null>(null)
   const [authReady, setAuthReady] = React.useState(!cloudEnabled)
@@ -208,7 +225,7 @@ export function useCloud(store: FinanceStore) {
         const onConflict = SINGLE.includes(t) ? "user_id" : "user_id,id"
         // Por tandas para no enviar peticiones enormes.
         for (let i = 0; i < rows.length; i += 500) {
-          const { error } = await sb.from(t).upsert(rows.slice(i, i + 500), { onConflict })
+          const error = await upsertTolerant(sb, t, rows.slice(i, i + 500), onConflict)
           if (error) return error as Err
         }
       }

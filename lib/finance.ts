@@ -56,7 +56,17 @@ export interface Settings {
   hormigaMax: number
   nombre: string
   perfil: Perfil
+  /** Moneda en la que se apuntan y muestran todos los importes. */
+  moneda: Moneda
 }
+
+/* ---------- moneda ---------- */
+export type Moneda = "EUR" | "ARS"
+export const MONEDAS: Record<Moneda, { nombre: string; sim: string; locale: string; hormiga: number; ejemplo: string }> = {
+  EUR: { nombre: "Euro", sim: "€", locale: "es-ES", hormiga: 1000, ejemplo: "10" },
+  ARS: { nombre: "Peso argentino", sim: "$", locale: "es-AR", hormiga: 1000000, ejemplo: "10000" },
+}
+export const isMoneda = (x: unknown): x is Moneda => x === "EUR" || x === "ARS"
 
 /* ---------- perfil (formulario de bienvenida) ---------- */
 export type Cobro = "fija" | "horas" | "autonomo" | "no"
@@ -184,13 +194,31 @@ export const norm = (s: unknown) =>
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 export const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o))
 
-const NF = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" })
-const NF0 = new Intl.NumberFormat("es-ES", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-  minimumFractionDigits: 0,
+/*
+ * Formato de los importes según la moneda elegida. Toda la app usa eur()/eur0()…, que
+ * formatean con la moneda activa; la cambia setMoneda() al cargar o cambiar los ajustes.
+ */
+let MON: Moneda = "EUR"
+const formatters = (m: Moneda) => ({
+  nf: new Intl.NumberFormat(MONEDAS[m].locale, { style: "currency", currency: m }),
+  nf0: new Intl.NumberFormat(MONEDAS[m].locale, { style: "currency", currency: m, maximumFractionDigits: 0, minimumFractionDigits: 0 }),
 })
+let NF = formatters("EUR").nf
+let NF0 = formatters("EUR").nf0
+export function setMoneda(m: Moneda | undefined) {
+  const next = isMoneda(m) ? m : "EUR"
+  if (next === MON) return
+  MON = next
+  ;({ nf: NF, nf0: NF0 } = formatters(next))
+}
+/** Moneda activa y su símbolo (€ o $), para etiquetas como «Importe (€)». */
+export const moneda = () => MON
+export const sim = () => MONEDAS[MON].sim
+/** Nombres de las retenciones de la nómina según el país. */
+export const retenciones = () =>
+  MON === "ARS"
+    ? { ret: "Ganancias", retenido: "Ganancias retenidas", retLarga: "Impuesto a las Ganancias", ss: "Aportes", ssLarga: "Aportes (jubilación, obra social y PAMI)" }
+    : { ret: "IRPF", retenido: "IRPF retenido", retLarga: "Retención IRPF", ss: "Seg. Social", ssLarga: "Seguridad Social" }
 const PF = new Intl.NumberFormat("es-ES", { style: "percent", maximumFractionDigits: 0 })
 export const MINUS = "−"
 export const eur = (c: number) => NF.format(Math.abs(c || 0) / 100)
@@ -208,7 +236,7 @@ export const fmtPlain = (c: number) =>
 
 export function parseMoney(input: unknown): number | null {
   if (input == null) return null
-  let s = String(input).trim().replace(/[\s€]/g, "").replace(/^\+/, "")
+  let s = String(input).trim().replace(/[\s€$]/g, "").replace(/^\+/, "")
   let neg = false
   if (/^[-−]/.test(s)) {
     neg = true
@@ -298,6 +326,7 @@ export const defaultSettings = (): Settings => ({
   hormigaMax: 1000,
   nombre: "",
   perfil: {},
+  moneda: "EUR",
 })
 export const defaultWork = (): WorkData => ({
   cfg: { horasDia: 8, horasSemana: 40, precioHora: 0, precioExtra: 0, ini: "09:00", fin: "17:30", pausa: 30 },
@@ -361,7 +390,8 @@ export function normalizeSettings(s: unknown): Settings {
   if (!out.budgets || typeof out.budgets !== "object") out.budgets = {}
   if (!Array.isArray(out.recs)) out.recs = []
   out.saldoInicial = Number(out.saldoInicial) || 0
-  out.hormigaMax = Number(out.hormigaMax) || 1000
+  out.moneda = isMoneda(out.moneda) ? out.moneda : "EUR"
+  out.hormigaMax = Number(out.hormigaMax) || MONEDAS[out.moneda].hormiga
   out.nombre = typeof out.nombre === "string" ? out.nombre.slice(0, 30) : ""
   out.perfil = out.perfil && typeof out.perfil === "object" ? out.perfil : {}
   if (out.perfil.intereses !== undefined) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CatIcon, Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS, WEEKDAY_NAMES } from "@/components/finanzas/kit"
-import { MINUS, catMap, eur, eur0, fmtPlain, hormigaStats, monthLabel, pct, type FinanceData, type Tx } from "@/lib/finance"
+import { catMap, eur, eur0, fmtPlain, hormigaStats, MINUS, monthLabel, pct, sim, type FinanceData, type Tx } from "@/lib/finance"
 import { netPerHour } from "@/lib/work"
 
 export function HormigaView({
@@ -100,7 +100,7 @@ export function HormigaView({
                 onChange={(e) => setMax(e.target.value)}
                 className="h-10 w-28 font-mono"
               />
-              <span className="text-sm text-muted-foreground">€ como máximo</span>
+              <span className="text-sm text-muted-foreground">{sim()} como máximo</span>
               <Button type="submit" size="sm" variant="outline" className="ml-auto rounded-full">
                 Guardar
               </Button>

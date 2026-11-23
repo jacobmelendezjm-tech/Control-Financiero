@@ -6,7 +6,7 @@ import { CalendarRangeIcon, ClockIcon, FileTextIcon, PlusIcon, Settings2Icon, Wa
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Chip, OrbitDeco, Eyebrow, Meter, MiniBars, SectionTitle, Stat, WEEKDAYS } from "@/components/finanzas/kit"
-import { eur, eur0, monthLabel, monthShort, pct, todayStr, type FinanceData, type Payslip, type Shift } from "@/lib/finance"
+import { eur, eur0, moneda, monthLabel, monthShort, pct, retenciones, todayStr, type FinanceData, type Payslip, type Shift } from "@/lib/finance"
 import {
   DAY_NAMES,
   KIND_LABEL,
@@ -513,7 +513,7 @@ function Nominas({
           <div className="relative mt-3 flex flex-wrap gap-2">
             <Chip tone="glass">{y.list.length} nóminas</Chip>
             {y.list.length ? <Chip tone="glass">media {eur0(y.avgNeto)}</Chip> : null}
-            {y.irpfRate != null ? <Chip tone="gold">IRPF {pct(y.irpfRate)}</Chip> : null}
+            {y.irpfRate != null ? <Chip tone="gold">{retenciones().ret} {pct(y.irpfRate)}</Chip> : null}
           </div>
           <Button onClick={onNew} className="relative mt-5 h-12 w-full rounded-2xl bg-gold text-[15px] font-semibold text-[#1f2b2d] hover:bg-gold/90">
             <PlusIcon className="size-5" /> Añadir nómina
@@ -522,8 +522,12 @@ function Nominas({
 
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Bruto del año" value={eur0(y.bruto)} />
-          <Stat label="IRPF retenido" value={eur0(y.irpf)} sub="Te lo pueden devolver en la renta" />
-          <Stat label="Seguridad Social" value={eur0(y.ss)} />
+          <Stat
+            label={retenciones().retenido}
+            value={eur0(y.irpf)}
+            sub={moneda() === "ARS" ? "Retenido por tu empleador" : "Te lo pueden devolver en la renta"}
+          />
+          <Stat label={retenciones().ssLarga} value={eur0(y.ss)} />
           <Stat label="Horas extra pagadas" value={eur0(y.extras)} />
         </div>
 
@@ -554,7 +558,7 @@ function Nominas({
               />
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <i className="size-2 rounded-full bg-gold" aria-hidden /> Última nómina. Tu neto cambia sobre todo por las horas
-                extra y por la retención de IRPF.
+                extra y por la retención de {retenciones().ret}.
               </p>
             </CardContent>
           </Card>
@@ -581,7 +585,7 @@ function Nominas({
                         <span className="block font-medium first-letter:uppercase">{monthLabel(p.m)}</span>
                         <span className="block text-xs text-muted-foreground">
                           Bruto {eur(p.bruto)}
-                          {p.bruto && p.irpf ? ` · IRPF ${pct(p.irpf / p.bruto)}` : ""}
+                          {p.bruto && p.irpf ? ` · ${retenciones().ret} ${pct(p.irpf / p.bruto)}` : ""}
                           {p.extras ? ` · extras ${eur(p.extras)}` : ""}
                         </span>
                       </span>
@@ -593,7 +597,7 @@ function Nominas({
             ) : (
               <div className="grid justify-items-center gap-3 px-6 py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Apunta tus nóminas para ver cuánto te retienen de IRPF y cómo cambia tu sueldo cada mes.
+                  Apunta tus nóminas para ver cuánto te retienen de {retenciones().ret} y cómo cambia tu sueldo cada mes.
                 </p>
                 <Button onClick={onNew} className="rounded-full">
                   Añadir nómina
@@ -605,11 +609,19 @@ function Nominas({
         <Card>
           <CardContent className="grid gap-1.5 text-sm">
             <Eyebrow>¿Por qué varía mi nómina?</Eyebrow>
-            <p className="text-muted-foreground">
-              El <b className="text-foreground">IRPF</b> es un adelanto de tu declaración de la renta: la empresa retiene un porcentaje
-              según lo que prevé que ganes en el año. Si cobras horas extra o cambia tu situación, el porcentaje se ajusta y el neto
-              sube o baja. Lo retenido de más te lo devuelven en la renta.
-            </p>
+            {moneda() === "ARS" ? (
+              <p className="text-muted-foreground">
+                Del bruto se descuentan los <b className="text-foreground">aportes</b> (jubilación, obra social y PAMI, en general un
+                17 %) y, si superas el mínimo, el <b className="text-foreground">impuesto a las Ganancias</b>, que el empleador retiene
+                según lo que prevé que cobres. Las horas extra, el aguinaldo o un aumento pueden cambiar la retención y el neto.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                El <b className="text-foreground">IRPF</b> es un adelanto de tu declaración de la renta: la empresa retiene un porcentaje
+                según lo que prevé que ganes en el año. Si cobras horas extra o cambia tu situación, el porcentaje se ajusta y el neto
+                sube o baja. Lo retenido de más te lo devuelven en la renta.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -12,8 +12,6 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { NativeSelect } from "@/components/finanzas/dialogs"
 import {
-  CUR,
-  MINUS,
   addMonths,
   balanceUpTo,
   budgetRows,
@@ -22,6 +20,7 @@ import {
   byDate,
   cap,
   catMap,
+  CUR,
   dayLabel,
   daysIn,
   eur,
@@ -29,20 +28,24 @@ import {
   eurM,
   eurS,
   fmtPlain,
+  MINUS,
+  MONEDAS,
   monthLabel,
+  monthsBetween,
   monthShort,
   monthStats,
-  monthsBetween,
   niceScale,
   norm,
   pct,
   pendingRecs,
   projection,
   rule503020,
+  sim,
   type BudgetState,
   type Category,
   type FinanceData,
   type Goal,
+  type Moneda,
   type Recurring,
   type Tx,
   type TxType,
@@ -871,11 +874,11 @@ export function PresView({
                           value={r.limit ? fmtPlain(r.limit) : ""}
                           placeholder="—"
                           disabled={demo}
-                          aria-label={`Límite mensual para ${r.cat.n} en euros`}
+                          aria-label={`Límite mensual para ${r.cat.n}`}
                           onCommit={(raw) => onBudget(r.cat.id, raw)}
                           className="h-8 w-20"
                         />
-                        €
+                        {sim()}
                       </span>
                     </div>
                     <Bar value={r.limit ? r.pct || 0 : 0} state={r.state} />
@@ -1006,6 +1009,7 @@ export function MetasView({
 export function AjustesView({
   data,
   memory,
+  onMoneda,
   onSaldo,
   onNewRec,
   onEditRec,
@@ -1022,6 +1026,7 @@ export function AjustesView({
 }: {
   data: FinanceData
   memory: boolean
+  onMoneda: (m: Moneda) => void
   onSaldo: (raw: string) => void
   onNewRec: () => void
   onEditRec: (r: Recurring) => void
@@ -1071,6 +1076,37 @@ export function AjustesView({
         <div className="grid min-w-0 content-start gap-4">
           <Card>
             <CardHeader>
+              <CardTitle>Moneda</CardTitle>
+              <CardDescription>En la que apuntas y ves todos tus importes. Cambiarla no convierte lo que ya tienes apuntado.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div role="radiogroup" aria-label="Moneda" className="grid grid-cols-2 gap-2">
+                {(Object.keys(MONEDAS) as Moneda[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={s.moneda === m}
+                    onClick={() => onMoneda(m)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-left ring-1 ring-foreground/10 transition-colors",
+                      s.moneda === m ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
+                    )}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 font-heading text-lg font-semibold text-primary">
+                      {MONEDAS[m].sim}
+                    </span>
+                    <span className="grid leading-tight">
+                      <span className="font-medium">{MONEDAS[m].nombre}</span>
+                      <span className="text-xs text-muted-foreground">{m === "EUR" ? "España y zona euro" : "Argentina"}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Saldo inicial</CardTitle>
               <CardDescription>
                 Lo que tenías en tu cuenta el día que empezaste a apuntar. Se suma al saldo acumulado del ticket.
@@ -1079,12 +1115,12 @@ export function AjustesView({
             <CardContent className="flex max-w-60 items-center gap-2">
               <MoneyInput
                 id="saldo-ini"
-                aria-label="Saldo inicial en euros"
+                aria-label="Saldo inicial"
                 value={fmtPlain(s.saldoInicial || 0)}
                 onCommit={onSaldo}
                 className="h-10"
               />
-              <span>€</span>
+              <span>{sim()}</span>
             </CardContent>
           </Card>
           <Card>

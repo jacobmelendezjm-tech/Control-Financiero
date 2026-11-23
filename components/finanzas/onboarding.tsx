@@ -11,7 +11,7 @@ import { Orbi, type OrbiMood } from "@/components/finanzas/orbi"
 import { Spinner } from "@/components/ui/skeleton"
 import { mailSentToast } from "@/components/finanzas/account-card"
 import { clearPendingLogin, pasteCode, readPendingLogin, savePendingLogin } from "@/lib/pending-login"
-import { eur, fmtPlain, parseMoney, parsePos, type Cobro, type FinanceData, type Interes, type Objetivo } from "@/lib/finance"
+import { eur, fmtPlain, MONEDAS, parseMoney, parsePos, sim, type Cobro, type FinanceData, type Interes, type Moneda, type Objetivo } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
 export interface OnboardAnswers {
@@ -72,6 +72,7 @@ export function Onboarding({
   onFinish,
   onLater,
   onLocal,
+  onMoneda,
   cloud,
   accountOnly = false,
 }: {
@@ -81,6 +82,8 @@ export function Onboarding({
   onLater: () => void
   /** Eligió «Seguir sin cuenta»: no se vuelve a preguntar al abrir. */
   onLocal: () => void
+  /** Cambia la moneda al momento (se ve en los pasos siguientes). */
+  onMoneda: (m: Moneda) => void
   cloud?: OnboardCloud
   /** Solo la pregunta de la cuenta (el perfil ya está hecho). */
   accountOnly?: boolean
@@ -352,6 +355,27 @@ export function Onboarding({
                   onChange={(e) => setNombre(e.target.value)}
                   className="h-12 text-lg"
                 />
+                <p className="mt-1 text-sm font-medium">¿En qué moneda llevas tus cuentas?</p>
+                <div role="radiogroup" aria-label="Moneda" className="grid grid-cols-2 gap-2">
+                  {(Object.keys(MONEDAS) as Moneda[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      role="radio"
+                      aria-checked={data.settings.moneda === m}
+                      onClick={() => onMoneda(m)}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left ring-1 ring-foreground/10 transition-colors",
+                        data.settings.moneda === m ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/60"
+                      )}
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 font-heading font-semibold text-primary">
+                        {MONEDAS[m].sim}
+                      </span>
+                      <span className="text-sm font-medium">{MONEDAS[m].nombre}</span>
+                    </button>
+                  ))}
+                </div>
               </>
             ) : null}
 
@@ -415,16 +439,16 @@ export function Onboarding({
                 <Title>{cobro === "horas" ? "¿Cuánto cobras?" : "¿Cuánto cobras al mes, más o menos?"}</Title>
                 {cobro === "horas" ? (
                   <div className="grid grid-cols-2 gap-2.5">
-                    <Field label="€ por hora (bruto)" id="ob-ph">
+                    <Field label={`${sim()} por hora (bruto)`} id="ob-ph">
                       <Input id="ob-ph" inputMode="decimal" placeholder="7,50" value={ph} onChange={(e) => setPh(e.target.value)} />
                     </Field>
-                    <Field label="€ por hora extra" id="ob-pe">
+                    <Field label={`${sim()} por hora extra`} id="ob-pe">
                       <Input id="ob-pe" inputMode="decimal" placeholder="9,50" value={pe} onChange={(e) => setPe(e.target.value)} />
                     </Field>
                   </div>
                 ) : null}
                 <div className="grid grid-cols-[1fr_110px] gap-2.5">
-                  <Field label={cobro === "horas" ? "Neto al mes aprox. (€)" : "Neto al mes (€)"} id="ob-neto">
+                  <Field label={cobro === "horas" ? `Neto al mes aprox. (${sim()})` : `Neto al mes (${sim()})`} id="ob-neto">
                     <Input id="ob-neto" inputMode="decimal" placeholder="880" value={neto} onChange={(e) => setNeto(e.target.value)} className="h-12 text-lg" />
                   </Field>
                   <Field label="Día de cobro" id="ob-dia">
@@ -465,7 +489,7 @@ export function Onboarding({
                 <p className="-mt-2 text-sm text-muted-foreground">Lo que hay hoy en tu cuenta. Así tu saldo en Orbe será el real desde el primer día.</p>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Dinero en tu cuenta hoy, en euros" inputMode="decimal" placeholder="0" value={saldo} onChange={(e) => setSaldo(e.target.value)} className="h-12 text-lg" />
-                  <span className="text-lg text-muted-foreground">€</span>
+                  <span className="text-lg text-muted-foreground">{sim()}</span>
                 </div>
               </>
             ) : null}
@@ -499,12 +523,12 @@ export function Onboarding({
                     <Field label="¿Para qué?" id="ob-mn">
                       <Input id="ob-mn" placeholder="Viaje, coche, portátil…" maxLength={40} value={metaN} onChange={(e) => setMetaN(e.target.value)} />
                     </Field>
-                    <Field label="¿Cuánto? (€)" id="ob-mo">
+                    <Field label={`¿Cuánto? (${sim()})`} id="ob-mo">
                       <Input id="ob-mo" inputMode="decimal" placeholder="1.000" value={metaO} onChange={(e) => setMetaO(e.target.value)} />
                     </Field>
                   </div>
                 ) : null}
-                <Field label="¿Cuánto te gustaría ahorrar cada mes? (€)" id="ob-ah">
+                <Field label={`¿Cuánto te gustaría ahorrar cada mes? (${sim()})`} id="ob-ah">
                   <Input
                     id="ob-ah"
                     inputMode="decimal"

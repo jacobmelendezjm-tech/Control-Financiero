@@ -17,11 +17,12 @@ import { Label } from "@/components/ui/label"
 import {
   catMap,
   eur,
-  isHormiga,
   fmtPlain,
+  isHormiga,
   norm,
   parseMoney,
   parsePos,
+  sim,
   uid,
   ym,
   type Category,
@@ -223,7 +224,7 @@ export function TxDialog({
               className="h-14 font-mono text-2xl font-semibold md:text-2xl"
             />
             <span className="font-mono text-xl text-muted-foreground" aria-hidden>
-              €
+              {sim()}
             </span>
           </div>
         </Field>
@@ -367,10 +368,10 @@ export function GoalDialog({
           <Input id="g-n" autoFocus maxLength={40} placeholder="p. ej. Fondo de emergencia" value={n} onChange={(e) => setN(e.target.value)} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Objetivo (€)" htmlFor="g-obj">
+          <Field label={`Objetivo (${sim()})`} htmlFor="g-obj">
             <Input id="g-obj" inputMode="decimal" autoComplete="off" placeholder="1000" value={obj} onChange={(e) => setObj(e.target.value)} />
           </Field>
-          <Field label="Ya ahorrado (€)" htmlFor="g-ah">
+          <Field label={`Ya ahorrado (${sim()})`} htmlFor="g-ah">
             <Input id="g-ah" inputMode="decimal" autoComplete="off" placeholder="0" value={ah} onChange={(e) => setAh(e.target.value)} />
           </Field>
         </div>
@@ -484,7 +485,7 @@ export function RecDialog({
           <Input id="r-n" autoFocus maxLength={40} placeholder="p. ej. Tarifa móvil" value={n} onChange={(e) => setN(e.target.value)} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Importe (€)" htmlFor="r-c">
+          <Field label={`Importe (${sim()})`} htmlFor="r-c">
             <Input id="r-c" inputMode="decimal" autoComplete="off" placeholder="15" value={c} onChange={(e) => setC(e.target.value)} />
           </Field>
           <Field label="Día del mes" htmlFor="r-d">

@@ -4,8 +4,10 @@ import {
   eur,
   eur0,
   hormigaStats,
+  moneda,
   monthStats,
   pct,
+  retenciones,
   rule503020,
   todayStr,
   type FinanceData,
@@ -39,8 +41,9 @@ const GENERAL: OrbiLine[] = [
   { text: "Un buen fondo de emergencia cubre de 3 a 6 meses de tus gastos. ¿Creamos una meta?", mood: "think" },
   { text: "Revisa tus suscripciones cada pocos meses. Siempre hay alguna que ya no usas.", mood: "wow" },
   { text: "Apuntar cada gasto en el momento es el superpoder de la gente que ahorra.", mood: "happy" },
-  { text: "Guarda las nóminas: el IRPF retenido de más te lo devuelven en la renta.", mood: "think" },
 ]
+/** Consejo solo para España (con euros). */
+const GENERAL_ES: OrbiLine = { text: "Guarda las nóminas: el IRPF retenido de más te lo devuelven en la renta.", mood: "think" }
 
 export function buddyTips(view: string, data: FinanceData): OrbiLine[] {
   const cur = CUR()
@@ -80,9 +83,14 @@ export function buddyTips(view: string, data: FinanceData): OrbiLine[] {
   }
   if (view === "nominas") {
     const y = payslipYear(data.payslips, cur.slice(0, 4))
+    const r = retenciones().ret
+    const es = moneda() === "EUR"
     if (y.list.length)
-      tips.push({ text: `Este año te han retenido ${eur0(y.irpf)} de IRPF (${pct(y.irpfRate)}). Parte puede volver en la renta.`, mood: "think" })
-    tips.push({ text: "Si tu neto baja sin motivo, mira el IRPF: a veces lo suben al cobrar horas extra.", mood: "think" })
+      tips.push({
+        text: `Este año te han retenido ${eur0(y.irpf)} de ${r} (${pct(y.irpfRate)}).${es ? " Parte puede volver en la renta." : ""}`,
+        mood: "think",
+      })
+    tips.push({ text: `Si tu neto baja sin motivo, mira ${es ? "el IRPF" : "Ganancias"}: a veces la retención sube al cobrar horas extra.`, mood: "think" })
   }
   if (view === "hormiga" && hs.year)
     tips.push({ text: `Si recortas tus hormigas a la mitad, ahorras unos ${eur0(hs.year / 2)} al año. ¿Lo intentamos?`, mood: "happy" })
@@ -90,7 +98,8 @@ export function buddyTips(view: string, data: FinanceData): OrbiLine[] {
     const g = [...data.goals].filter((x) => x.obj > 0 && x.ah < x.obj).sort((a, b) => b.ah / b.obj - a.ah / a.obj)[0]
     if (g) tips.push({ text: `«${g.n}» va por el ${pct(g.ah / g.obj)}. Te faltan ${eur(g.obj - g.ah)}. ¡Tú puedes!`, mood: "happy" })
   }
-  return tips.length ? [...tips, pick(GENERAL)] : [pick(GENERAL)]
+  const general = moneda() === "EUR" ? [...GENERAL, GENERAL_ES] : GENERAL
+  return tips.length ? [...tips, pick(general)] : [pick(general)]
 }
 
 export function greetingLine(nombre: string): OrbiLine {

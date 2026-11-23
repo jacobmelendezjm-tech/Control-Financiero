@@ -171,6 +171,13 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - Nueva página **`/descargar`**: botón para instalar la app (o abrirla), pasos para Android, iPhone y ordenador, botón «Compartir» (menú de compartir del móvil o copiar enlace) y lo que hace Orbe.
 - Imagen al compartir (`public/og-orbe.jpg`, 1200 × 630, con capturas reales y Orbi) y etiquetas Open Graph y Twitter en toda la app (`OG_IMAGE` en `lib/legal.ts`, `metadataBase` en el layout).
 
+### Pesos argentinos
+
+- Nuevo ajuste **Moneda** (Euro € o Peso argentino $) en Ajustes y en la bienvenida (paso del nombre). Todos los importes se muestran y se escriben con su formato (`$ 1.250.000,50`); cambiarla no convierte lo apuntado.
+- Con pesos, la nómina habla de **Ganancias** y **Aportes** (jubilación, obra social y PAMI) en vez de IRPF y Seguridad Social, y Orbi no menciona la renta española.
+- La cifra del saldo encoge si el importe es muy largo. El límite de gastos hormiga pasa a $ 10.000 al cambiar a pesos si seguía en el de euros.
+- Modelo: `Settings.moneda` (`loadAll`, `toRows`/`fromRows`, ida y vuelta comprobada) y migración `20261129000000_profiles_moneda.sql` (pendiente de ejecutar). La sincronización ya no se para si falta una columna nueva.
+
 ---
 
 ## Plantilla para nuevas entradas

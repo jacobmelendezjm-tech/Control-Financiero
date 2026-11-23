@@ -82,6 +82,9 @@ import {
   parseCSV,
   parseMoney,
   parsePos,
+  MONEDAS,
+  retenciones,
+  setMoneda,
   todayStr,
   toCSV,
   txKey,
@@ -90,6 +93,7 @@ import {
   type Category,
   type FinanceData,
   type Goal,
+  type Moneda,
   type Payslip,
   type Perfil,
   type Recurring,
@@ -203,6 +207,8 @@ export function FinanzasApp() {
   const cloud = useCloud(store)
   const reminders = useReminders(store.real, store.showingDemo)
   const { real, view: D, showingDemo, loaded, mode, update } = store
+  // Todos los importes se formatean con la moneda que eligió el usuario (también los de ejemplo).
+  setMoneda(real.settings.moneda)
   const [view, setView] = React.useState<View>("inicio")
   const [month, setMonth] = React.useState(CUR)
   const [filters, setFilters] = React.useState<Filters>({ q: "", t: "all", cat: "all", all: false })
@@ -847,7 +853,7 @@ export function FinanzasApp() {
       else d.payslips.push(p)
     })
     close()
-    const rate = p.bruto && p.irpf ? ` Te retienen un ${Math.round((p.irpf / p.bruto) * 1000) / 10} % de IRPF.` : ""
+    const rate = p.bruto && p.irpf ? ` Te retienen un ${Math.round((p.irpf / p.bruto) * 1000) / 10} % de ${retenciones().ret}.` : ""
     if (!orbiSay(`¡Nómina guardada! ${eur(p.neto)} netos.${rate}`, "happy"))
       toast.success(asIncome ? "Nómina guardada y apuntada como ingreso" : "Nómina guardada")
   }
@@ -875,6 +881,17 @@ export function FinanzasApp() {
       d.settings.hormigaMax = v
     })
     toast.success(`Gastos hormiga: hasta ${eur(v)}`)
+  }
+  const cambiarMoneda = (m: Moneda) => {
+    if (m === real.settings.moneda) return
+    const antes = real.settings.moneda
+    update((d) => {
+      d.hasSettings = true
+      d.settings.moneda = m
+      // Si el límite de gastos hormiga seguía en el de la otra moneda, se ajusta al de esta.
+      if (d.settings.hormigaMax === MONEDAS[antes].hormiga) d.settings.hormigaMax = MONEDAS[m].hormiga
+    })
+    toast.success(`Moneda: ${MONEDAS[m].nombre} (${MONEDAS[m].sim})`)
   }
   const setNombre = (n: string) => {
     update((d) => {
@@ -924,6 +941,7 @@ export function FinanzasApp() {
           onFinish={onboardFinish}
           onLater={onboardLater}
           accountOnly={obAccount}
+          onMoneda={cambiarMoneda}
           onLocal={() => {
             try {
               localStorage.setItem("orbe.cuenta", "local")
@@ -1068,6 +1086,7 @@ export function FinanzasApp() {
                 <AjustesView
                   data={real}
                   memory={memory}
+                  onMoneda={cambiarMoneda}
                   onSaldo={setSaldo}
                   onNewRec={() => open({ kind: "rec", rec: null })}
                   onEditRec={(r) => open({ kind: "rec", rec: r })}
@@ -1298,7 +1317,7 @@ function AddSheet({ onClose, onPick }: { onClose: () => void; onPick: (k: "g" | 
     { k: "g", label: "Gasto", sub: "Compra, factura, café…", Icon: ArrowUpRightIcon, cls: "bg-out/12 text-out" },
     { k: "i", label: "Ingreso", sub: "Nómina, bizum, extra…", Icon: ArrowDownLeftIcon, cls: "bg-in/12 text-in" },
     { k: "shift", label: "Jornada", sub: "Horas trabajadas", Icon: ClockIcon, cls: "bg-primary/12 text-primary" },
-    { k: "payslip", label: "Nómina", sub: "Bruto, IRPF y neto", Icon: FileTextIcon, cls: "bg-gold/25 text-[#8a5a00] dark:text-gold" },
+    { k: "payslip", label: "Nómina", sub: `Bruto, ${retenciones().ret} y neto`, Icon: FileTextIcon, cls: "bg-gold/25 text-[#8a5a00] dark:text-gold" },
   ] as const
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>

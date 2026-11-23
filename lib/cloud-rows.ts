@@ -6,6 +6,7 @@
 import {
   byDate,
   cleanIntereses,
+  isMoneda,
   loadAll,
   normalizeTurnos,
   type DayPlan,
@@ -54,7 +55,7 @@ export const SINGLE: Table[] = ["profiles", "work_settings", "work_schedules"]
 export const SOFT: Table[] = ["categories", "recurring", "goals", "goal_contributions", "transactions", "shifts", "payslips"]
 
 const COLS: Record<Table, string[]> = {
-  profiles: ["nombre", "saldo_inicial", "hormiga_max", "cobro", "neto_aprox", "dia_cobro", "objetivo", "ahorro_mes", "onboarding_done", "intereses"],
+  profiles: ["nombre", "saldo_inicial", "hormiga_max", "cobro", "neto_aprox", "dia_cobro", "objetivo", "ahorro_mes", "onboarding_done", "intereses", "moneda"],
   work_settings: ["horas_dia", "horas_semana", "precio_hora", "precio_extra", "hora_entrada", "hora_salida", "pausa_min", "modo", "extra_regla", "turnos"],
   categories: ["id", "nombre", "tipo", "grupo", "orden", "presupuesto"],
   recurring: ["id", "nombre", "tipo", "importe", "category_id", "dia", "activo"],
@@ -129,6 +130,7 @@ export function toRows(d: FinanceData): RowSet {
     ahorro_mes: p.ahorroMes ?? null,
     onboarding_done: !!p.done,
     intereses: p.intereses?.length ? p.intereses.join(",") : null,
+    moneda: s.moneda || "EUR",
   })
   const w = d.work.cfg
   rs.work_settings.me = canonical("work_settings", {
@@ -289,6 +291,7 @@ export function fromRows(rs: RowSet): FinanceData {
       started: true,
       hormigaMax: Number(pr?.hormiga_max) || 1000,
       nombre: String(pr?.nombre || ""),
+      moneda: isMoneda(pr?.moneda) ? pr.moneda : "EUR",
       perfil: {
         done: !!pr?.onboarding_done,
         ...(pr?.cobro ? { cobro: pr.cobro as never } : {}),
