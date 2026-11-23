@@ -61,17 +61,25 @@ export function Onboarding({
   data,
   onFinish,
   onLater,
+  onLocal,
   cloud,
+  accountOnly = false,
 }: {
   open: boolean
   data: FinanceData
   onFinish: (a: OnboardAnswers, tour: boolean) => void
   onLater: () => void
+  /** Eligió «Seguir sin cuenta»: no se vuelve a preguntar al abrir. */
+  onLocal: () => void
   cloud?: OnboardCloud
+  /** Solo la pregunta de la cuenta (el perfil ya está hecho). */
+  accountOnly?: boolean
 }) {
   const p = data.settings.perfil || {}
   const cfg = data.work.cfg
-  const [step, setStep] = React.useState<StepId>("hola")
+  // Se decide al abrir: si ya hay sesión, no se pregunta.
+  const [askAccount] = React.useState(() => !!cloud?.enabled && !cloud.signedIn)
+  const [step, setStep] = React.useState<StepId>(() => (askAccount || accountOnly ? "cuenta" : "hola"))
   const [nombre, setNombre] = React.useState(data.settings.nombre || "")
   const [cobro, setCobro] = React.useState<Cobro | undefined>(p.cobro)
   const [neto, setNeto] = React.useState(p.neto ? fmtPlain(p.neto) : "")
@@ -94,13 +102,15 @@ export function Onboarding({
   const [codeSent, setCodeSent] = React.useState(false)
   const [verified, setVerified] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
-  // Se decide al abrir: si ya hay sesión, no se pregunta.
-  const [askAccount] = React.useState(() => !!cloud?.enabled && !cloud.signedIn)
   const [err, setErr] = React.useState("")
   const panelRef = React.useRef<HTMLDivElement>(null)
 
   const works = cobro === "fija" || cobro === "horas"
-  const flow: StepId[] = [
+  const flow: StepId[] = accountOnly
+    ? ["cuenta"]
+    : [
+    // Lo primero al abrir: entrar con tu cuenta o seguir sin ella.
+    ...(askAccount ? (["cuenta"] as StepId[]) : []),
     "hola",
     "nombre",
     "cobro",
@@ -108,11 +118,10 @@ export function Onboarding({
     ...(works ? (["jornada"] as StepId[]) : []),
     "saldo",
     "objetivo",
-    ...(askAccount ? (["cuenta"] as StepId[]) : []),
     "listo",
   ]
   const idx = flow.indexOf(step)
-  const questions: StepId[] = flow.filter((s) => s !== "hola" && s !== "listo")
+  const questions: StepId[] = flow.filter((s) => s !== "hola" && s !== "listo" && s !== "cuenta")
   const qIdx = questions.indexOf(step)
 
   // Foco al primer campo o botón de cada paso.
@@ -164,6 +173,7 @@ export function Onboarding({
       if (hd.trim() && !(h > 0 && h <= 24)) return "Las horas al día van de 0 a 24."
     }
     if (step === "saldo" && saldo.trim() && parseMoney(saldo) == null) return "Escribe un importe válido, por ejemplo 450."
+    if (step === "cuenta" && !modo && !verified) return "Elige una de las dos opciones."
     if (step === "cuenta" && modo === "nube" && !verified)
       return "Termina de verificar tu correo o elige «Seguir sin cuenta»."
     if (step === "objetivo") {
@@ -177,6 +187,8 @@ export function Onboarding({
     const e = validate()
     setErr(e)
     if (e) return
+    if (step === "cuenta" && modo === "local" && !verified) onLocal()
+    if (step === "cuenta" && accountOnly) return onLater()
     setStep(flow[Math.min(idx + 1, flow.length - 1)])
   }
   const back = () => {
@@ -210,6 +222,8 @@ export function Onboarding({
     setBusy(false)
     if (e) return setErr(e)
     setVerified(true)
+    if (accountOnly) setTimeout(onLater, 1200)
+    else setTimeout(() => setStep("hola"), 1200)
   }
 
   if (!open) return null
@@ -233,7 +247,7 @@ export function Onboarding({
                   : step === "cuenta"
                     ? verified
                       ? { mood: "wow", say: "¡Cuenta creada! Tus datos, a salvo." }
-                      : { mood: "think", say: "Tú eliges: nube o solo aquí." }
+                      : { mood: "wave", say: "¡Hola! Soy Orbi. ¿Entramos?" }
                   : { mood: "wave", say: name ? `¡Encantado, ${name}!` : "¡Todo listo!" }
 
   return (
@@ -292,7 +306,9 @@ export function Onboarding({
                   Unas preguntas rápidas sobre tu trabajo, tu sueldo y tus metas. Así tu saldo será real, ficharás con tu horario y mis
                   consejos irán contigo. Puedes saltar cualquier pregunta.
                 </p>
-                <p className="text-xs text-muted-foreground">⏱ Menos de un minuto · 🔒 Todo se guarda solo en este dispositivo</p>
+                <p className="text-xs text-muted-foreground">
+                  ⏱ Menos de un minuto · {verified ? "☁️ Se guarda en tu cuenta" : "🔒 Se guarda en este dispositivo"}
+                </p>
               </>
             ) : null}
 
@@ -452,12 +468,13 @@ export function Onboarding({
 
             {step === "cuenta" ? (
               <>
-                <Title>¿Dónde guardamos tus datos?</Title>
+                <p className="-mb-2 text-xs font-semibold tracking-[0.14em] text-primary uppercase">Bienvenido a Orbe</p>
+                <Title>¿Entras con tu cuenta?</Title>
                 <div role="radiogroup" aria-label="Dónde guardar tus datos" className="grid gap-2">
                   {(
                     [
-                      ["nube", CloudIcon, "Crear cuenta con mi correo", "Copia segura en la nube y tus datos en todos tus dispositivos. Sin contraseñas."],
-                      ["local", SmartphoneIcon, "Seguir sin cuenta", "Todo se guarda solo en este dispositivo."],
+                      ["nube", CloudIcon, "Iniciar sesión o crear cuenta", "Con tu correo, sin contraseñas. Tus datos a salvo en la nube y en todos tus dispositivos."],
+                      ["local", SmartphoneIcon, "Continuar sin cuenta", "Todo se guarda solo en este móvil."],
                     ] as const
                   ).map(([v, Icon, l, d], k) => (
                     <button
@@ -490,8 +507,7 @@ export function Onboarding({
                     <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-[#8a5a00] dark:text-warn" />
                     <span>
                       Tus datos se quedarán <b>solo en este dispositivo</b>. Si borras los datos del navegador o cambias de móvil, se
-                      perderán. Cuando quieras, en <b>Más › Guarda tus datos en la nube</b> pones tu correo y se sube todo lo que hayas
-                      apuntado.
+                      perderán. Cuando quieras, en el menú <b>☰ › Cuenta y nube</b> pones tu correo y se sube todo lo que hayas apuntado.
                     </span>
                   </div>
                 ) : null}
@@ -499,7 +515,7 @@ export function Onboarding({
                 {modo === "nube" ? (
                   verified ? (
                     <p className="flex items-center gap-2 rounded-2xl bg-good/12 px-3.5 py-3 text-sm font-medium text-good">
-                      ✓ Cuenta lista: {email}. Tus datos se guardarán en la nube.
+                      ✓ Sesión iniciada: {email}. Tus datos se guardan en la nube.
                     </p>
                   ) : !codeSent ? (
                     <div className="grid gap-2">
@@ -594,7 +610,7 @@ export function Onboarding({
             </p>
 
             <div className="flex items-center justify-between gap-2 pb-1">
-              {step === "hola" ? (
+              {step === "hola" || (step === "cuenta" && idx === 0) ? (
                 <Button type="button" variant="ghost" onClick={onLater}>
                   Ahora no
                 </Button>
@@ -613,7 +629,17 @@ export function Onboarding({
                 </span>
               )}
               <Button type="submit" data-primary="" className="h-11 rounded-full px-6 text-[15px]">
-                {step === "hola" ? "Empezar" : step === "listo" ? "Enséñame la app" : "Siguiente"}
+                {step === "hola"
+                  ? "Empezar"
+                  : step === "listo"
+                    ? "Enséñame la app"
+                    : step === "cuenta"
+                      ? modo === "local"
+                        ? "Continuar sin cuenta"
+                        : accountOnly && verified
+                          ? "Listo"
+                          : "Continuar"
+                      : "Siguiente"}
               </Button>
             </div>
           </form>

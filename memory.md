@@ -125,3 +125,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 - `WorkCfg.modo` ("fijo" | "turnos"; si falta, `modoOf` lo deduce), `turnos` (turnos tipo con nombre) y `extraRegla`.
 - Extras con turnos (`dayTotals` en `lib/work.ts`): «turno» = lo que pasa del turno previsto (cuadrante o semana planificada; sin cuadrante, el turno tipo con la hora de entrada más cercana, ±2 h) y el día entero si no tocaba; «semana» = lo que pasa de `horasSemana`, repartido en los días que superan el tope.
 - Los turnos tipo salen primero (con nombre) en los atajos de un toque (`usualShifts`); «Fichar hoy» a turnos sin cuadrante abre el día en «Trabajo».
+
+## Pregunta de cuenta al abrir
+
+- `finanzas-app.tsx` abre `Onboarding` al cargar (tras `cloud.authReady`) si falta el perfil o si no hay sesión y `localStorage["orbe.cuenta"] !== "local"`. Con el perfil hecho, `accountOnly` muestra solo el paso «cuenta». En el flujo completo, «cuenta» es el primer paso.

@@ -124,6 +124,11 @@ Asistente animado (robot original) con tutorial guiado de 12 pasos en burbujas, 
 - «Fichar hoy» sin cuadrante abre el día en «Trabajo» para elegir el turno.
 - Base de datos: `20261127000000_work_turnos.sql` (pendiente de ejecutar en Supabase).
 
+### La cuenta, lo primero al abrir
+
+- Al abrir la app sin sesión aparece **«¿Entras con tu cuenta?»**: «Iniciar sesión o crear cuenta» (correo + código) o «Continuar sin cuenta» (con el aviso de que los datos se quedan en el móvil).
+- Antes estaba al final del formulario y solo lo veían los usuarios nuevos. Ahora sale a todo el que no tenga sesión y no haya elegido «Continuar sin cuenta» (`orbe.cuenta = local`); si ya tiene el perfil hecho, sale solo esa pregunta.
+
 ---
 
 ## Plantilla para nuevas entradas

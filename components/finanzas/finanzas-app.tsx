@@ -206,6 +206,8 @@ export function FinanzasApp() {
   const [menu, setMenu] = React.useState(false)
   const [buddyOn, setBuddyOn] = React.useState(true)
   const [onboard, setOnboard] = React.useState(false)
+  /** El formulario se abre solo para la pregunta de la cuenta. */
+  const [obAccount, setObAccount] = React.useState(false)
   const [obKey, setObKey] = React.useState(0)
   /** «later»: lo dejó para luego · «hidden»: cerró también la tarjeta de Inicio. */
   const [obPref, setObPref] = React.useState<string | null>(null)
@@ -213,10 +215,12 @@ export function FinanzasApp() {
 
   /* Al abrir: primero el formulario de bienvenida, después el tutorial (una sola vez cada uno). */
   React.useEffect(() => {
-    if (!loaded || firstRun.current === false) return
+    if (!loaded || !cloud.authReady || firstRun.current === false) return
     let tourDone = true,
+      local = false,
       pref: string | null = null
     try {
+      local = localStorage.getItem("orbe.cuenta") === "local"
       tourDone = localStorage.getItem("orbe.tour") === "done"
       pref = localStorage.getItem("orbe.onboard")
       // Preferencias guardadas en este dispositivo.
@@ -225,11 +229,14 @@ export function FinanzasApp() {
       setObPref(pref)
     } catch {}
     const needsProfile = !real.settings.perfil?.done && !pref
-    if (!needsProfile && tourDone) return
+    // Sin sesión y sin haber elegido «Continuar sin cuenta»: se pregunta al abrir.
+    const needsAccount = cloud.enabled && !cloud.user && !local
+    if (!needsProfile && !needsAccount && tourDone) return
     const t = setTimeout(() => {
       firstRun.current = false
       if (location.hash && location.hash !== "#inicio") location.hash = "inicio"
-      if (needsProfile) {
+      if (needsProfile || needsAccount) {
+        setObAccount(!needsProfile)
         setObKey((k) => k + 1)
         setOnboard(true)
       } else setTour(true)
@@ -237,7 +244,7 @@ export function FinanzasApp() {
     return () => clearTimeout(t)
     // Solo una vez, cuando ya están cargados los datos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded])
+  }, [loaded, cloud.authReady])
   const savePref = (v: string) => {
     setObPref(v)
     try {
@@ -245,6 +252,7 @@ export function FinanzasApp() {
     } catch {}
   }
   const openOnboarding = () => {
+    setObAccount(false)
     setObKey((k) => k + 1)
     setOnboard(true)
   }
@@ -256,6 +264,7 @@ export function FinanzasApp() {
   }
   const onboardLater = () => {
     setOnboard(false)
+    if (obAccount) return
     if (!real.settings.perfil?.done) savePref("later")
     setTimeout(() => orbiSay("¡Sin problema! Cuando quieras personalizamos Orbe desde la tarjeta de Inicio o desde «Más».", "happy"), 450)
   }
@@ -904,6 +913,12 @@ export function FinanzasApp() {
           data={real}
           onFinish={onboardFinish}
           onLater={onboardLater}
+          accountOnly={obAccount}
+          onLocal={() => {
+            try {
+              localStorage.setItem("orbe.cuenta", "local")
+            } catch {}
+          }}
           cloud={{ enabled: cloud.enabled, signedIn: !!cloud.user, sendCode: cloud.sendCode, verifyCode: cloud.verifyCode }}
         />
       ) : null}
