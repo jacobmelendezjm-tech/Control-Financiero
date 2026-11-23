@@ -84,7 +84,7 @@ Orbe es una app de finanzas personales en español (España, euros) para móvil,
 ## Decisiones y preferencias del usuario
 
 - **Principio rector (2026-11-23)**: gestionar dinero y horarios de forma sencilla y rápida; poco texto, pocos pasos, todo a toques. Antes de añadir una función, pensar cómo hacerla en un toque.
-- Estética (2026-11-23): shader «Silk» de 21st.dev con su paleta verde (#03120E, #0E7C5A, #7CE577, #F4FFC7) sobre la base turquesa; glassmorphism; isla dinámica para todos los avisos (`toast` de `@/lib/notify`, ya no sonner); apertura futurista sobre ahorro y crecimiento.
+- Estética (2026-11-23): shader «Silk» de 21st.dev con la paleta turquesa de la app (#0F1A1C, #23717B, #12B2C1, #E5F9F8); glassmorphism; isla dinámica para todos los avisos (`toast` de `@/lib/notify`, ya no sonner); apertura futurista sobre ahorro y crecimiento.
 - Calendario: verde = libre, rojo = trabajo, amarillo = cubro a alguien; notas por día.
 - Navegación: menú lateral con tres rayas arriba a la derecha; estado de la nube como icono (verde ✓ / rojo !).
 

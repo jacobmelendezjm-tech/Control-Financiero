@@ -402,8 +402,8 @@ html.lenis body {
 .splash-coin { opacity: 0; animation-name: splash-coin; animation-timing-function: linear; animation-iteration-count: infinite; }
 .splash-grid {
   background-image:
-    linear-gradient(to right, rgb(124 229 119 / 0.22) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(124 229 119 / 0.22) 1px, transparent 1px);
+    linear-gradient(to right, rgb(18 178 193 / 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(18 178 193 / 0.22) 1px, transparent 1px);
   background-size: 64px 64px;
   transform: perspective(380px) rotateX(62deg);
   transform-origin: bottom;

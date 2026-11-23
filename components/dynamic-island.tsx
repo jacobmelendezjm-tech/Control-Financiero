@@ -54,7 +54,7 @@ export function DynamicIsland({ busy }: { busy: boolean }) {
               key={msg.id}
               className={cn(
                 "island-pop grid size-9 shrink-0 place-items-center rounded-full",
-                msg.tone === "success" ? "bg-[#7CE577] text-[#03120E]" : msg.tone === "error" ? "bg-[#ef6b63] text-white" : "bg-white/15 text-white"
+                msg.tone === "success" ? "bg-[#12B2C1] text-[#0f1a1c]" : msg.tone === "error" ? "bg-[#ef6b63] text-white" : "bg-white/15 text-white"
               )}
             >
               {msg.icon ?? <Icon className="size-[18px]" strokeWidth={2.6} />}
@@ -79,7 +79,7 @@ export function DynamicIsland({ busy }: { busy: boolean }) {
           </>
         ) : (
           <>
-            <span className="block size-3 animate-spin rounded-full border-2 border-[#7CE577] border-t-transparent" aria-hidden />
+            <span className="block size-3 animate-spin rounded-full border-2 border-[#12B2C1] border-t-transparent" aria-hidden />
             <span className="text-[11px] font-medium whitespace-nowrap text-white/80">Guardando</span>
           </>
         )}

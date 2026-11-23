@@ -133,7 +133,7 @@ export function HomeView({
         <section
           data-tour="saldo"
           aria-label="Saldo"
-          className="relative isolate overflow-hidden rounded-[28px] bg-[#03120E] p-5 text-white shadow-[0_24px_48px_-20px_rgb(14_124_90/0.7)]"
+          className="relative isolate overflow-hidden rounded-[28px] bg-[#0f1a1c] p-5 text-white shadow-[0_24px_48px_-20px_rgb(13_138_158/0.7)]"
         >
           <SilkShader className="absolute inset-0 -z-10" />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-black/60 via-black/30 to-black/55" />

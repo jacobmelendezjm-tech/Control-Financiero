@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 /*
  * «Silk» (flow shader) — hecho con el Shader Builder de 21st.dev.
  * WebGL1 puro, sin librerías: un triángulo a pantalla completa y este fragment shader.
- * Colores (bajo → alto): #03120E, #0E7C5A, #7CE577, #F4FFC7.
+ * Colores (bajo → alto), paleta de la app: #0F1A1C, #23717B, #12B2C1, #E5F9F8.
  * Se pausa con la pestaña oculta o fuera de pantalla; con «reducir movimiento»
  * se pinta un solo fotograma.
  */
@@ -263,10 +263,10 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`
 
 /** Colores de la receta (bajo → alto). */
 const COLORS: [number, number, number][] = [
-  [0.012, 0.071, 0.055], // #03120E
-  [0.055, 0.486, 0.353], // #0E7C5A
-  [0.486, 0.898, 0.467], // #7CE577
-  [0.957, 1.0, 0.78], // #F4FFC7
+  [0.059, 0.102, 0.11], // #0F1A1C
+  [0.137, 0.443, 0.482], // #23717B
+  [0.071, 0.698, 0.757], // #12B2C1
+  [0.898, 0.976, 0.973], // #E5F9F8
 ]
 
 function compile(gl: WebGLRenderingContext, type: number, src: string) {
